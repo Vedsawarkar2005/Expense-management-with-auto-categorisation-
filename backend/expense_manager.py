@@ -1,4 +1,4 @@
-from model import predict_category
+from models.model import predict_category
 
 def add_expense(description, amount):
 
@@ -12,4 +12,3 @@ def add_expense(description, amount):
 
     print(expense)
 
-add_expense("movie ticket", 300)
