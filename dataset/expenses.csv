@@ -1,13 +1,97 @@
 description,category
 bought vegetables,groceries
-grocery shopping,groceries
+grocery shopping at supermarket,groceries
+bought fruits and milk,groceries
+weekly grocery run,groceries
+purchased snacks,groceries
 restaurant dinner,food
-movie ticket,entertainment
-petrol refill,transport
-electricity bill,utilities
+lunch at cafe,food
 dinner with friends,food
-family dinner,food
-lunch with colleagues,food
-breakfast at cafe,food
-ate at restaurant,food
-ordered food online,food
+ordered pizza,food
+breakfast at hotel,food
+movie ticket,entertainment
+netflix subscription,entertainment
+concert ticket,entertainment
+gaming purchase,entertainment
+spotify subscription,entertainment
+petrol refill,transport
+uber ride,transport
+bus ticket,transport
+train travel,transport
+flight booking,transport
+electricity bill,utilities
+water bill,utilities
+internet bill,utilities
+mobile recharge,utilities
+gas bill,utilities
+doctor consultation,health
+medicine purchase,health
+hospital bill,health
+gym membership,health
+health insurance,health
+shirt shopping,shopping
+bought shoes,shopping
+online shopping amazon,shopping
+purchased clothes,shopping
+bought accessories,shopping
+school fees,education
+college tuition,education
+bought books,education
+online course fee,education
+exam fees,education
+rent payment,house
+house maintenance,house
+furniture purchase,house
+cleaning service,house
+home repair,house
+gift purchase,others
+charity donation,others
+bank charges,others
+insurance premium,others
+miscellaneous expense,others
+coffee at cafe,food
+snacks from store,groceries
+fuel for bike,transport
+taxi ride,transport
+dinner at restaurant,food
+lunch order online,food
+movie night,entertainment
+paid electricity bill,utilities
+paid water bill,utilities
+bought medicine,health
+gym fees,health
+tshirt purchase,shopping
+book purchase,education
+rent for apartment,house
+donation to charity,others
+amazon order electronics,shopping
+flipkart shopping,shopping
+zomato food order,food
+swiggy dinner order,food
+ola cab ride,transport
+metro ticket,transport
+bought vegetables and fruits,groceries
+grocery from dmart,groceries
+paid internet bill,utilities
+mobile bill payment,utilities
+hospital checkup,health
+medicine from pharmacy,health
+bought jeans,shopping
+course subscription,education
+house rent,house
+gift for friend,others
+charity fund donation,others
+fuel refill car,transport
+bus pass recharge,transport
+restaurant lunch,food
+dinner buffet,food
+snack purchase,groceries
+monthly grocery shopping,groceries
+electric bill payment,utilities
+water charges,utilities
+doctor visit,health
+gym renewal,health
+shopping mall purchase,shopping
+bookstore purchase,education
+rent paid,house
+misc expense,others
