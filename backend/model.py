@@ -17,4 +17,4 @@ def predict_category(text):
     text_vec = vectorizer.transform([text])
     return model.predict(text_vec)[0]
 
-print(predict_category("dinner with friends"))
+print(predict_category("movie ticket"))
