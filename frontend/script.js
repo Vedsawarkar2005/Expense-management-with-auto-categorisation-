@@ -392,122 +392,35 @@ function addAccount(name, balance) {
 // handleFormSubmit(event)
 // Called when the user clicks "Add Expense".
 // Validates input values and adds a new expense if everything is correct.
-function handleFormSubmit(event) {
-    event.preventDefault(); // stop the page from reloading
+async function handleFormSubmit(event) {
+    event.preventDefault();
 
     const amount = parseFloat(amountInput.value);
     const description = descriptionInput.value.trim();
-    const category = categorySelect.value;
+    let category = categorySelect.value;
     const accountName = expenseAccountSelect ? expenseAccountSelect.value : "";
 
-    // Start by assuming everything is valid.
-    let isValid = true;
+    if (!description || isNaN(amount)) return;
 
-    // Validate amount
-    if (isNaN(amount) || amount <= 0) {
-        amountInput.classList.add("is-invalid");
-        isValid = false;
-    } else {
-        amountInput.classList.remove("is-invalid");
+    // 🔥 CALL BACKEND ML API
+    try {
+        const response = await fetch("http://127.0.0.1:5000/predict-category", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ description: description })
+        });
+
+        const result = await response.json();
+        category = result.category;
+
+    } catch (error) {
+        console.log("ML error:", error);
     }
 
-    // Validate description
-    if (!description) {
-        descriptionInput.classList.add("is-invalid");
-        isValid = false;
-    } else {
-        descriptionInput.classList.remove("is-invalid");
-    }
-
-    // Validate category
-    if (!category) {
-        categorySelect.classList.add("is-invalid");
-        isValid = false;
-    } else {
-        categorySelect.classList.remove("is-invalid");
-    }
-
-    // Validate account (only if the select exists)
-    if (expenseAccountSelect) {
-        if (!accountName) {
-            expenseAccountSelect.classList.add("is-invalid");
-            isValid = false;
-        } else {
-            expenseAccountSelect.classList.remove("is-invalid");
-        }
-    }
-
-    if (!isValid) {
-        // If something is wrong, do not add the expense.
-        return;
-    }
-
-    // All good: create the new expense.
     addExpense(amount, description, category, accountName);
-
-    // Reset the form so the user can add another expense.
     expenseForm.reset();
-    categorySelect.value = "";
-    if (expenseAccountSelect) {
-        expenseAccountSelect.value = "";
-    }
-    amountInput.focus();
-}
-
-// handleTableClick(event)
-// Uses "event delegation" to listen for clicks on any Delete button inside the table.
-function handleTableClick(event) {
-    const deleteButton = event.target.closest(".btn-delete-expense");
-
-    // If the clicked element is not a delete button, we do nothing.
-    if (!deleteButton) {
-        return;
-    }
-
-    const row = deleteButton.closest("tr");
-    if (!row) {
-        return;
-    }
-
-    const id = row.dataset.id;
-    if (!id) {
-        return;
-    }
-
-    deleteExpense(id);
-}
-
-// handleBankFormSubmit(event)
-// Handles submission of the "Add Bank Account" form.
-function handleBankFormSubmit(event) {
-    event.preventDefault();
-
-    const name = accountNameInput.value.trim();
-    const balance = parseFloat(accountBalanceInput.value);
-
-    let isValid = true;
-
-    if (!name) {
-        accountNameInput.classList.add("is-invalid");
-        isValid = false;
-    } else {
-        accountNameInput.classList.remove("is-invalid");
-    }
-
-    if (isNaN(balance) || balance < 0) {
-        accountBalanceInput.classList.add("is-invalid");
-        isValid = false;
-    } else {
-        accountBalanceInput.classList.remove("is-invalid");
-    }
-
-    if (!isValid) {
-        return;
-    }
-
-    addAccount(name, balance);
-    bankAccountForm.reset();
-    accountNameInput.focus();
 }
 
 // -----------------------------
