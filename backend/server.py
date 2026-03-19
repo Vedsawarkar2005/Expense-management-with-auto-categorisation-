@@ -7,9 +7,14 @@ from models.model import predict_category
 app = Flask(__name__)
 CORS(app)
 
-# File to store expenses
-DATA_FILE = Path("Expense.txt")
+# 📁 Get current file location (backend folder)
+BASE_DIR = Path(__file__).resolve().parent
 
+# 📁 Go to project root → database → Expense.txt
+DATA_FILE = BASE_DIR.parent / "database" / "Expense.txt"
+
+# ✅ Create folder if not exists
+DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ✅ 1. SAVE EXPENSES
 @app.route("/save-expenses", methods=["POST"])
