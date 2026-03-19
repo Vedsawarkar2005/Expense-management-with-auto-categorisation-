@@ -1,23 +1,35 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 import pandas as pd
 import os
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 
+# 📁 Load dataset correctly
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 DATA_PATH = os.path.join(BASE_DIR, '..', 'dataset', 'expenses.csv')
 
 data = pd.read_csv(DATA_PATH)
 
-x = data['description']
-y = data['category']
+# 🧹 Clean text
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r'[^a-z\s]', '', text)
+    return text
 
-vectorizer = TfidfVectorizer()
-x_vectorized = vectorizer.fit_transform(x)
+data["description"] = data["description"].apply(clean_text)
+
+X = data["description"]
+y = data["category"]
+
+# 🔥 Vectorizer with n-grams
+vectorizer = TfidfVectorizer(ngram_range=(1,2))
+X_vec = vectorizer.fit_transform(X)
 
 model = LogisticRegression()
-model.fit(x_vectorized, y)
+model.fit(X_vec, y)
 
+# 🎯 Prediction function
 def predict_category(text):
+    text = clean_text(text)
     text_vec = vectorizer.transform([text])
     return model.predict(text_vec)[0]

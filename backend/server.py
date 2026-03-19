@@ -2,21 +2,18 @@ from flask import Flask, request, jsonify
 from pathlib import Path
 import json
 from flask_cors import CORS
+from models.model import predict_category
 
 app = Flask(__name__)
-# Allow requests from the frontend (any origin is fine for this project)
 CORS(app)
 
-# Text file where all expenses will be stored
+# File to store expenses
 DATA_FILE = Path("Expense.txt")
 
 
-@app.post("/save-expenses")
+# ✅ 1. SAVE EXPENSES
+@app.route("/save-expenses", methods=["POST"])
 def save_expenses():
-    """
-    Receive a list of expenses from the frontend and write them to Expense.txt.
-    Each line in the file will contain one expense as a JSON object.
-    """
     data = request.get_json(silent=True)
 
     if not isinstance(data, list):
@@ -24,40 +21,46 @@ def save_expenses():
 
     lines = []
     for expense in data:
-        # Convert each expense dictionary to a JSON string
-        line = json.dumps(expense, ensure_ascii=False)
-        lines.append(line)
+        lines.append(json.dumps(expense, ensure_ascii=False))
 
-    # Join all JSON strings with newlines and write to the text file
     DATA_FILE.write_text("\n".join(lines), encoding="utf-8")
 
     return jsonify({"ok": True, "count": len(data)})
 
 
-@app.get("/load-expenses")
+# ✅ 2. LOAD EXPENSES
+@app.route("/load-expenses", methods=["GET"])
 def load_expenses():
-    """
-    Optional helper endpoint:
-    Read all expenses from Expense.txt and return them as a JSON list.
-    """
     if not DATA_FILE.exists():
         return jsonify([])
 
-    content = DATA_FILE.read_text(encoding="utf-8")
-    lines = content.splitlines()
+    lines = DATA_FILE.read_text(encoding="utf-8").splitlines()
 
     expenses = []
     for line in lines:
         try:
             expenses.append(json.loads(line))
         except json.JSONDecodeError:
-            # If a line is not valid JSON, skip it
             continue
 
     return jsonify(expenses)
 
 
-if __name__ == "__main__":
-    # Runs the server on http://127.0.0.1:5000
-    app.run(debug=True)
+# ✅ 3. ML CATEGORY PREDICTION
+@app.route("/predict-category", methods=["POST"])
+def predict_category_api():
+    print("PREDICT API HIT")  # Debug log
 
+    data = request.get_json()
+    description = data.get("description", "")
+
+    category = predict_category(description)
+
+    return jsonify({
+        "category": category
+    })
+
+
+# ▶️ RUN SERVER
+if __name__ == "__main__":
+    app.run(debug=True)
