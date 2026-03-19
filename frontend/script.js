@@ -423,6 +423,38 @@ async function handleFormSubmit(event) {
     expenseForm.reset();
 }
 
+// handleTableClick(event)
+// Called when the user clicks anywhere in the expense table.
+// We use "event delegation" to check if they clicked a "Delete" button.
+function handleTableClick(event) {
+    const target = event.target;
+    // target.closest() finds the element itself or the nearest ancestor matching the selector
+    const deleteBtn = target.closest('.btn-delete-expense');
+
+    if (deleteBtn) {
+        const tr = deleteBtn.closest('tr');
+        if (tr && tr.dataset.id) {
+            deleteExpense(tr.dataset.id);
+        }
+    }
+}
+
+// handleBankFormSubmit(event)
+// Called when the user clicks "Add Account" in the bank accounts form.
+function handleBankFormSubmit(event) {
+    event.preventDefault();
+
+    const name = accountNameInput.value.trim();
+    const balance = parseFloat(accountBalanceInput.value);
+
+    if (!name || isNaN(balance)) return;
+
+    addAccount(name, balance);
+    if (bankAccountForm) {
+        bankAccountForm.reset();
+    }
+}
+
 // -----------------------------
 // 7. INITIALISATION
 // -----------------------------

@@ -1,7 +1,1 @@
-{"id": "1773939747412bafc9654d77b5", "amount": 400, "description": "stocks", "category": "food", "accountName": "", "createdAt": "2026-03-19T17:02:27.412Z"}
-{"id": "177393932413151333cea7c59b", "amount": 1000, "description": "clothes", "category": "shopping", "accountName": "", "createdAt": "2026-03-19T16:55:24.131Z"}
-{"id": "1773939294879d3ab25fd76535", "amount": 1000, "description": "Cloths", "category": "food", "accountName": "", "createdAt": "2026-03-19T16:54:54.879Z"}
-{"id": "17739392715154ae9eb4ff4e86", "amount": 500, "description": "Grocery", "category": "groceries", "accountName": "", "createdAt": "2026-03-19T16:54:31.515Z"}
-{"id": "177393925733672a6f4dbdc7de8", "amount": 100, "description": "Fuel in bike", "category": "transport", "accountName": "", "createdAt": "2026-03-19T16:54:17.336Z"}
-{"id": "1773939240953b9f8f183845ae", "amount": 300, "description": "movie ticket", "category": "entertainment", "accountName": "", "createdAt": "2026-03-19T16:54:00.953Z"}
-{"id": "1773939191770461da5da222f68", "amount": 100, "description": "pizza", "category": "food", "accountName": "", "createdAt": "2026-03-19T16:53:11.770Z"}
+{"id": "1773940080730c82ca6e8a21f38", "amount": 1000, "description": "Electricity bill", "category": "utilities", "accountName": "", "createdAt": "2026-03-19T17:08:00.730Z"}
