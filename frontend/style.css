@@ -1,7 +1,16 @@
+:root {
+    --theme-darkest: #18230F;
+    --theme-dark: #27391C;
+    --theme-mid: #255F38;
+    --theme-bright: #1F7D53;
+    --bg-color: #EBD5AB;
+}
+
 body {
     min-height: 100vh;
-    background: radial-gradient(circle at top left, #e0f2ff 0, #f8fafc 40%, #edf2ff 100%);
+    background: var(--bg-color);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--theme-darkest);
 }
 
 main {
@@ -9,8 +18,8 @@ main {
 }
 
 .navbar {
-    background: linear-gradient(120deg, #0d6efd, #6610f2);
-    box-shadow: 0 0.5rem 1rem rgba(15, 23, 42, 0.25);
+    background: linear-gradient(120deg, var(--theme-darkest), var(--theme-dark));
+    box-shadow: 0 0.5rem 1rem rgba(24, 35, 15, 0.2);
 }
 
 .navbar-brand {
@@ -19,10 +28,13 @@ main {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: #ffffff !important;
 }
 
 .navbar-brand i {
     font-size: 1.35rem;
+    color: var(--theme-bright);
+    /* emerald accent */
 }
 
 .page-header {
@@ -32,50 +44,74 @@ main {
 
 .page-header h1 {
     font-size: 1.75rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--theme-darkest);
 }
 
 .page-subtitle {
-    color: #64748b;
+    color: var(--theme-dark);
     font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .card-shadow {
-    box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.15);
+    box-shadow: 0 1rem 2rem rgba(24, 35, 15, 0.08);
+    /* slight dark green shadow */
     border: none;
+    /* remove borders for clean look */
     border-radius: 1rem;
-    background: #ffffffcc;
-    backdrop-filter: blur(10px);
+    background: #ffffff;
+    /* crisp white */
     transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .card-shadow:hover {
     transform: translateY(-4px);
-    box-shadow: 0 1.4rem 2.4rem rgba(15, 23, 42, 0.22);
+    box-shadow: 0 1.4rem 2.4rem rgba(24, 35, 15, 0.12);
 }
 
 .card-title {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--theme-darkest);
 }
 
 .card-title i {
-    color: #0d6efd;
+    color: var(--theme-bright);
 }
 
 .form-label {
-    font-weight: 500;
+    font-weight: 600;
+    color: var(--theme-dark);
+}
+
+/* Base table tweaks */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--theme-darkest);
+    border-color: rgba(37, 95, 56, 0.15);
+    /* light green border */
 }
 
 .table thead th {
-    background-color: #f1f3f9;
-    border-bottom-width: 1px;
+    background-color: #f4f8f5;
+    /* very light green tint */
+    border-bottom: 2px solid rgba(37, 95, 56, 0.2);
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6b7280;
+    color: var(--theme-mid);
+}
+
+.table tbody tr {
+    transition: background-color 0.15s ease, transform 0.08s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fcf9;
+    transform: translateY(-1px);
 }
 
 .category-pill {
@@ -92,50 +128,110 @@ main {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #6b7280;
+    color: var(--theme-mid);
     margin-bottom: 0.25rem;
 }
 
 .stat-value {
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--theme-darkest);
 }
 
 .stat-icon {
     font-size: 1.5rem;
-    color: #0d6efd;
+    color: var(--theme-bright);
 }
 
+/* Bootstrap Overrides for Primary Buttons */
 .btn-primary {
+    background-color: var(--theme-mid);
+    border-color: var(--theme-mid);
+    color: #ffffff;
     border-radius: 999px;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(37, 95, 56, 0.2);
 }
 
-.btn-primary i {
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--theme-dark) !important;
+    border-color: var(--theme-dark) !important;
+}
+
+/* Bootstrap Overrides for Outline Primary Buttons */
+.btn-outline-primary {
+    color: var(--theme-mid);
+    border-color: var(--theme-mid);
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.btn-primary i,
+.btn-outline-primary i,
+.btn-outline-danger i {
     margin-right: 0.35rem;
 }
 
 .btn-primary,
 .btn-outline-secondary,
-.btn-outline-danger {
+.btn-outline-danger,
+.btn-outline-primary {
     transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease,
-        border-color 0.15s ease;
+        border-color 0.15s ease, color 0.15s ease;
 }
 
 .btn-primary:hover,
 .btn-outline-secondary:hover,
 .btn-outline-danger:hover {
     transform: translateY(-1px);
-    box-shadow: 0 0.6rem 1.4rem rgba(15, 23, 42, 0.2);
 }
 
-.table tbody tr {
-    transition: background-color 0.15s ease, transform 0.08s ease;
+.btn-primary:hover {
+    background-color: var(--theme-dark);
+    border-color: var(--theme-dark);
+    box-shadow: 0 0.6rem 1.4rem rgba(37, 95, 56, 0.3);
 }
 
-.table tbody tr:hover {
-    background-color: #f8fafc;
+.btn-outline-primary:hover {
+    background-color: var(--theme-mid);
+    color: #ffffff;
     transform: translateY(-1px);
+    box-shadow: 0 0.6rem 1.4rem rgba(37, 95, 56, 0.3);
+}
+
+/* Form control overrides for beautiful inputs */
+.form-control,
+.form-select {
+    border: 1px solid rgba(37, 95, 56, 0.3);
+    color: var(--theme-darkest);
+    background-color: #fafcfa;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: #ffffff;
+    border-color: var(--theme-bright);
+    box-shadow: 0 0 0 0.25rem rgba(31, 125, 83, 0.25);
+}
+
+.input-group-text {
+    background-color: #f4f8f5;
+    border: 1px solid rgba(37, 95, 56, 0.3);
+    color: var(--theme-mid);
+    font-weight: 600;
+}
+
+/* Delete Button Outline Danger Override */
+.btn-outline-danger {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #ffffff;
 }
 
 /* Fade-in animation for newly added rows */
