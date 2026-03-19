@@ -26,6 +26,14 @@ def serve_frontend():
 def serve_static(path):
     return send_from_directory(FRONTEND_DIR, path)
 
+@app.after_request
+def add_cache_control_headers(response):
+    """Force browsers to never cache static files during development."""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, public, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # ✅ 1. SAVE EXPENSES
 @app.route("/save-expenses", methods=["POST"])
 def save_expenses():
