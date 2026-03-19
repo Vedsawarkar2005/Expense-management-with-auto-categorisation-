@@ -1,1 +1,1 @@
-{"id": "1773940080730c82ca6e8a21f38", "amount": 1000, "description": "Electricity bill", "category": "utilities", "accountName": "", "createdAt": "2026-03-19T17:08:00.730Z"}
+{"id": "1773940208319581096f0036608", "amount": 2000, "description": "Clothes", "category": "shopping", "accountName": "Current account", "createdAt": "2026-03-19T17:10:08.319Z"}

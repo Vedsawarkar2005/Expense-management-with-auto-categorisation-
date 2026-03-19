@@ -308,6 +308,10 @@ function addExpense(amount, description, category, accountName) {
     renderExpenses();
     updateTotal();
 
+    // Refresh bank balances to reflect the new expense
+    renderAccounts();
+    updateBankTotal();
+
     // Add a fade-in animation to the newest row (which is the first row).
     const firstRow = expenseTableBody.querySelector("tr");
     if (firstRow) {
@@ -340,6 +344,8 @@ function deleteExpense(id) {
     saveExpensesToStorage(expenses);
     renderExpenses();
     updateTotal();
+    renderAccounts();
+    updateBankTotal();
     // Also update the text file on the server.
     sendExpensesToServer();
 }
@@ -355,6 +361,8 @@ function clearAllExpenses() {
     saveExpensesToStorage(expenses);
     renderExpenses();
     updateTotal();
+    renderAccounts();
+    updateBankTotal();
     // Also clear the data stored in Expense.txt.
     sendExpensesToServer();
 }
