@@ -1,20 +1,30 @@
 from flask import Flask, request, jsonify
+from flask import send_from_directory
 from pathlib import Path
 import json
 from flask_cors import CORS
 from models.model import predict_category
 
 app = Flask(__name__)
+# Disable cache for static files in development
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app)
 
-# 📁 Get current file location (backend folder)
 BASE_DIR = Path(__file__).resolve().parent
 
-# 📁 Go to project root → database → Expense.txt
+FRONTEND_DIR = BASE_DIR.parent / "frontend"
+
 DATA_FILE = BASE_DIR.parent / "database" / "Expense.txt"
 
-# ✅ Create folder if not exists
 DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+@app.route("/")
+def serve_frontend():
+    return send_from_directory(FRONTEND_DIR, "index.html")
+
+@app.route("/<path:path>")
+def serve_static(path):
+    return send_from_directory(FRONTEND_DIR, path)
 
 # ✅ 1. SAVE EXPENSES
 @app.route("/save-expenses", methods=["POST"])
