@@ -144,6 +144,7 @@ function createExpenseRow(expense) {
         <td>${formatCurrency(expense.amount)}</td>
         <td>${expense.description}</td>
         <td>${expense.category}</td>
+        <td>${expense.accountName || "-"}</td>
         <td class="text-end">
             <button class="btn btn-sm btn-outline-danger btn-delete-expense">
                 <i class="bi bi-trash"></i>
@@ -393,6 +394,17 @@ function addAccount(name, balance) {
     }
 }
 
+// getDefaultAccount() -> string
+// Returns the primary account name, or creates a "Default Account" if none exist.
+function getDefaultAccount() {
+    if (accounts.length > 0) {
+        return accounts[0].name;
+    }
+    const defaultName = "Default Account";
+    addAccount(defaultName, 0);
+    return defaultName;
+}
+
 // -----------------------------
 // 6. EVENT HANDLERS
 // -----------------------------
@@ -406,9 +418,14 @@ async function handleFormSubmit(event) {
     const amount = parseFloat(amountInput.value);
     const description = descriptionInput.value.trim();
     let category = categorySelect.value;
-    const accountName = expenseAccountSelect ? expenseAccountSelect.value : "";
+    let accountName = expenseAccountSelect ? expenseAccountSelect.value : "";
 
     if (!description || isNaN(amount)) return;
+
+    // Automatically set default account if user didn't pick one
+    if (!accountName) {
+        accountName = getDefaultAccount();
+    }
 
     // 🔥 CALL BACKEND ML API
     try {

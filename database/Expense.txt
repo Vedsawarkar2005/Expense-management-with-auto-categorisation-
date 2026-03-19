@@ -1,1 +1,2 @@
+{"id": "17739406962172c42f456506ef8", "amount": 300, "description": "pizza", "category": "food", "accountName": "Saving Account", "createdAt": "2026-03-19T17:18:16.217Z"}
 {"id": "1773940208319581096f0036608", "amount": 2000, "description": "Clothes", "category": "shopping", "accountName": "Current account", "createdAt": "2026-03-19T17:10:08.319Z"}
