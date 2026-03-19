@@ -25,10 +25,12 @@ const accountBalanceInput = document.getElementById("accountBalance");
 const bankAccountsBody = document.getElementById("bankAccountsBody");
 const bankTotalEl = document.getElementById("bankTotal");
 const bankEmptyStateEl = document.getElementById("bankEmptyState");
+const defaultAccountSelect = document.getElementById("defaultAccountSelect");
 
 // Keys under which we store data in the browser's localStorage.
 const STORAGE_KEY = "smart_expense_tracker_expenses";
 const BANK_STORAGE_KEY = "smart_expense_tracker_bank_accounts";
+const DEFAULT_ACCOUNT_KEY = "smart_expense_tracker_default_account";
 
 // This array will always contain the current list of expenses in memory.
 // We keep this in sync with localStorage.
@@ -36,6 +38,8 @@ let expenses = [];
 
 // This array will contain the list of bank accounts in memory.
 let accounts = [];
+
+let defaultAccountName = localStorage.getItem(DEFAULT_ACCOUNT_KEY) || "";
 
 // -----------------------------
 // 2. SMALL HELPER FUNCTIONS
@@ -385,24 +389,61 @@ function addAccount(name, balance) {
     // Also refresh available balance, which is based on total bank accounts.
     updateTotal();
 
-    // Add this account as an option in the "Account" select used when adding expenses.
-    if (expenseAccountSelect) {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        expenseAccountSelect.appendChild(option);
-    }
+    // Update the dropdowns to include the new account
+    updateAccountSelects();
 }
 
 // getDefaultAccount() -> string
-// Returns the primary account name, or creates a "Default Account" if none exist.
+// Returns the explicit default account, or primary, or creates "Default Account" if none exist.
 function getDefaultAccount() {
+    if (defaultAccountName && accounts.find(a => a.name === defaultAccountName)) {
+        return defaultAccountName;
+    }
     if (accounts.length > 0) {
         return accounts[0].name;
     }
     const defaultName = "Default Account";
     addAccount(defaultName, 0);
     return defaultName;
+}
+
+// updateAccountSelects()
+// Populates both the expense account select and default account select dropdowns.
+function updateAccountSelects() {
+    if (expenseAccountSelect) {
+        // Clear current options except the first placeholder
+        expenseAccountSelect.innerHTML = `<option value="" disabled selected>Select account</option>`;
+        for (let i = 0; i < accounts.length; i++) {
+            const option = document.createElement("option");
+            option.value = accounts[i].name;
+            option.textContent = accounts[i].name;
+            expenseAccountSelect.appendChild(option);
+        }
+    }
+
+    if (defaultAccountSelect) {
+        defaultAccountSelect.innerHTML = "";
+        if (accounts.length === 0) {
+            defaultAccountSelect.innerHTML = `<option value="" disabled selected>No accounts available</option>`;
+        } else {
+            for (let i = 0; i < accounts.length; i++) {
+                const option = document.createElement("option");
+                option.value = accounts[i].name;
+                option.textContent = accounts[i].name;
+                if (accounts[i].name === defaultAccountName) {
+                    option.selected = true;
+                }
+                defaultAccountSelect.appendChild(option);
+            }
+
+            // Auto-select the first one if default is invalid or empty
+            if (!defaultAccountName || !accounts.find(a => a.name === defaultAccountName)) {
+                defaultAccountName = accounts[0].name;
+                localStorage.setItem(DEFAULT_ACCOUNT_KEY, defaultAccountName);
+                defaultAccountSelect.value = defaultAccountName;
+            }
+        }
+    }
 }
 
 // -----------------------------
@@ -501,21 +542,17 @@ function init() {
     renderAccounts();
     updateBankTotal();
 
-    // Fill the "Account" select in the Add Expense form using existing accounts.
-    if (expenseAccountSelect) {
-        // Clear current options except the first placeholder
-        expenseAccountSelect.innerHTML = `
-            <option value="" disabled selected>Select account</option>
-        `;
-        for (let i = 0; i < accounts.length; i++) {
-            const option = document.createElement("option");
-            option.value = accounts[i].name;
-            option.textContent = accounts[i].name;
-            expenseAccountSelect.appendChild(option);
-        }
-    }
+    // Update both account-related dropdowns
+    updateAccountSelects();
 
     // Connect event handlers.
+    if (defaultAccountSelect) {
+        defaultAccountSelect.addEventListener("change", function (e) {
+            defaultAccountName = e.target.value;
+            localStorage.setItem(DEFAULT_ACCOUNT_KEY, defaultAccountName);
+        });
+    }
+
     expenseForm.addEventListener("submit", handleFormSubmit);
     expenseTableBody.addEventListener("click", handleTableClick);
 
