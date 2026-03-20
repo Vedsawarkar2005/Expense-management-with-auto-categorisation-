@@ -1,2 +1,2 @@
 # Expense-management-with-auto-categorisation-
-Software Requirements Specification (SRS) for a Personal Expense Tracker with Automatic Expense Categorization, designed to help users record daily expenses, track spending, and gain financial insights.
+Built a machine learning-based expense tracker that automatically categorizes transactions using NLP techniques. Implemented a text classification model (TF-IDF + Naive Bayes) to classify expenses into categories like food, transport, and utilities. Integrated with a frontend and local storage for real-time tracking.
