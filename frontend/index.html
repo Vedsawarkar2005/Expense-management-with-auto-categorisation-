@@ -63,9 +63,10 @@
                   </div>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
+                  <input type="hidden" id="editOriginalAccountName" value="">
                   <button type="submit" class="btn btn-outline-primary w-100">
-                    <i class="bi bi-plus-lg"></i>
-                    Add
+                    <i class="bi bi-plus-lg" id="bankFormBtnIcon"></i>
+                    <span id="bankFormBtnText">Add</span>
                   </button>
                 </div>
               </form>
@@ -81,6 +82,7 @@
                     <tr>
                       <th scope="col">Account</th>
                       <th scope="col" class="text-end">Balance</th>
+                      <th scope="col" class="text-end">Action</th>
                     </tr>
                   </thead>
                   <tbody id="bankAccountsBody">

@@ -29,6 +29,9 @@ const bankAccountsBody = document.getElementById("bankAccountsBody");
 const bankTotalEl = document.getElementById("bankTotal");
 const bankEmptyStateEl = document.getElementById("bankEmptyState");
 const defaultAccountSelect = document.getElementById("defaultAccountSelect");
+const editOriginalAccountNameInput = document.getElementById("editOriginalAccountName");
+const bankFormBtnText = document.getElementById("bankFormBtnText");
+const bankFormBtnIcon = document.getElementById("bankFormBtnIcon");
 
 // Keys under which we store data in the browser's localStorage.
 const STORAGE_KEY = "smart_expense_tracker_expenses";
@@ -207,9 +210,18 @@ function createAccountRow(account) {
     }
     const remaining = account.balance + earned - spent;
     const tr = document.createElement("tr");
+    tr.dataset.name = account.name;
     tr.innerHTML = `
         <td>${account.name}</td>
         <td class="text-end">${formatCurrency(remaining)}</td>
+        <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary btn-edit-account me-2" title="Edit">
+                <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-delete-account" title="Delete">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
     `;
     return tr;
 }
@@ -644,9 +656,116 @@ function handleBankFormSubmit(event) {
 
     if (!name || isNaN(balance)) return;
 
-    addAccount(name, balance);
-    if (bankAccountForm) {
-        bankAccountForm.reset();
+    if (editOriginalAccountNameInput && editOriginalAccountNameInput.value) {
+        const oldName = editOriginalAccountNameInput.value;
+        const account = accounts.find(a => a.name === oldName);
+        if (account) {
+            if (oldName !== name && accounts.some(a => a.name === name)) {
+                alert("An account with this name already exists!");
+                return;
+            }
+
+            account.name = name;
+            account.balance = balance;
+
+            if (oldName !== name) {
+                let expensesUpdated = false;
+                for (let i = 0; i < expenses.length; i++) {
+                    if (expenses[i].accountName === oldName) {
+                        expenses[i].accountName = name;
+                        expensesUpdated = true;
+                    }
+                }
+                if (expensesUpdated) {
+                    saveExpensesToStorage(expenses);
+                    sendExpensesToServer();
+                    renderExpenses();
+                }
+
+                if (defaultAccountName === oldName) {
+                    defaultAccountName = name;
+                    localStorage.setItem(DEFAULT_ACCOUNT_KEY, name);
+                }
+            }
+        }
+
+        saveAccountsToStorage(accounts);
+        renderAccounts();
+        updateTotal();
+        updateBankTotal();
+        updateAccountSelects();
+
+        editOriginalAccountNameInput.value = "";
+        if (bankFormBtnText) bankFormBtnText.textContent = "Add";
+        if (bankFormBtnIcon) bankFormBtnIcon.className = "bi bi-plus-lg";
+
+        if (bankAccountForm) bankAccountForm.reset();
+    } else {
+        if (accounts.some(a => a.name === name)) {
+            alert("An account with this name already exists!");
+            return;
+        }
+        addAccount(name, balance);
+        if (bankAccountForm) {
+            bankAccountForm.reset();
+        }
+    }
+}
+
+function deleteAccount(name) {
+    accounts = accounts.filter(a => a.name !== name);
+    saveAccountsToStorage(accounts);
+
+    if (defaultAccountName === name) {
+        if (accounts.length > 0) {
+            defaultAccountName = accounts[0].name;
+            localStorage.setItem(DEFAULT_ACCOUNT_KEY, defaultAccountName);
+        } else {
+            defaultAccountName = "";
+            localStorage.removeItem(DEFAULT_ACCOUNT_KEY);
+        }
+    }
+
+    renderAccounts();
+    updateTotal();
+    updateBankTotal();
+    updateAccountSelects();
+}
+
+function editBankAccount(name) {
+    const account = accounts.find(a => a.name === name);
+    if (!account) return;
+
+    accountNameInput.value = account.name;
+    accountBalanceInput.value = account.balance;
+
+    if (editOriginalAccountNameInput) editOriginalAccountNameInput.value = account.name;
+    if (bankFormBtnText) bankFormBtnText.textContent = "Update";
+    if (bankFormBtnIcon) bankFormBtnIcon.className = "bi bi-check2";
+
+    accountNameInput.focus();
+}
+
+function handleBankAccountClick(event) {
+    const target = event.target;
+
+    const deleteBtn = target.closest('.btn-delete-account');
+    if (deleteBtn) {
+        const tr = deleteBtn.closest('tr');
+        if (tr && tr.dataset.name) {
+            if (confirm("Are you sure you want to delete this account? Any expenses linked to it will remain but won't be tied to an active balance.")) {
+                deleteAccount(tr.dataset.name);
+            }
+        }
+        return;
+    }
+
+    const editBtn = target.closest('.btn-edit-account');
+    if (editBtn) {
+        const tr = editBtn.closest('tr');
+        if (tr && tr.dataset.name) {
+            editBankAccount(tr.dataset.name);
+        }
     }
 }
 
@@ -749,6 +868,9 @@ function init() {
 
     if (bankAccountForm) {
         bankAccountForm.addEventListener("submit", handleBankFormSubmit);
+    }
+    if (bankAccountsBody) {
+        bankAccountsBody.addEventListener("click", handleBankAccountClick);
     }
 }
 
