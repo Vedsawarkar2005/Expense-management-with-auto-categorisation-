@@ -95,3 +95,304 @@ shopping mall purchase,shopping
 bookstore purchase,education
 rent paid,house
 misc expense,others
+
+description,category
+dinner at restaurant,food
+lunch with friends,food
+breakfast meal,food
+pizza order,food
+burger and fries,food
+ate at cafe,food
+snacks purchase,food
+food delivery,food
+restaurant bill,food
+coffee and sandwich,food
+
+grocery shopping,groceries
+bought vegetables,groceries
+milk and bread,groceries
+supermarket purchase,groceries
+fruits and vegetables,groceries
+weekly groceries,groceries
+bought eggs and milk,groceries
+daily grocery items,groceries
+shopping for food items,groceries
+grocery store visit,groceries
+
+uber ride,transport
+taxi fare,transport
+bus ticket,transport
+train ticket,transport
+petrol refill,transport
+fuel expense,transport
+metro ticket,transport
+auto rickshaw fare,transport
+cab booking,transport
+bike fuel,transport
+
+movie ticket,entertainment
+cinema hall ticket,entertainment
+netflix subscription,entertainment
+spotify subscription,entertainment
+concert ticket,entertainment
+game purchase,entertainment
+online streaming,entertainment
+amusement park ticket,entertainment
+theater show,entertainment
+video game purchase,entertainment
+
+electricity bill,utilities
+water bill,utilities
+internet bill,utilities
+mobile recharge,utilities
+wifi payment,utilities
+gas bill,utilities
+power bill,utilities
+broadband bill,utilities
+utility payment,utilities
+electric bill,utilities
+
+doctor consultation,health
+medicine purchase,health
+hospital bill,health
+pharmacy expense,health
+health checkup,health
+medical bill,health
+bought medicines,health
+clinic visit,health
+doctor fees,health
+health insurance,health
+
+school fees,education
+college fees,education
+books purchase,education
+online course,education
+tuition fees,education
+exam fees,education
+study materials,education
+training course,education
+education expense,education
+library fees,education
+
+shopping clothes,shopping
+bought new shoes,shopping
+online shopping,shopping
+clothing purchase,shopping
+fashion items,shopping
+mall shopping,shopping
+accessories purchase,shopping
+buying clothes,shopping
+retail shopping,shopping
+shopping expense,shopping
+
+gym membership,personal
+salon visit,personal
+haircut,personal
+spa treatment,personal
+beauty products,personal
+fitness subscription,personal
+self care items,personal
+personal care expense,personal
+cosmetics purchase,personal
+grooming expense,personal
+
+description,category
+dinner at restaurant,food
+lunch with friends,food
+breakfast at cafe,food
+pizza order from dominos,food
+burger from mcdonalds,food
+ordered food from swiggy,food
+ordered food from zomato,food
+food delivery via swiggy,food
+restaurant bill payment,food
+coffee at starbucks,food
+chai and snacks,food
+street food chaat,food
+ate biryani,food
+family dinner outing,food
+quick lunch meal,food
+snacks from bakery,food
+sandwich and juice,food
+ordered thali,food
+dosa and idli breakfast,food
+paneer tikka order,food
+
+grocery shopping at dmart,groceries
+bought vegetables,groceries
+milk and bread purchase,groceries
+supermarket shopping,groceries
+kirana store items,groceries
+fruits purchase,groceries
+daily grocery shopping,groceries
+rice and wheat purchase,groceries
+eggs and milk,groceries
+groceries via bigbasket,groceries
+groceries via blinkit,groceries
+vegetables from local market,groceries
+grocery bill payment,groceries
+atta and dal purchase,groceries
+home grocery items,groceries
+weekly grocery shopping,groceries
+snacks grocery purchase,groceries
+household grocery items,groceries
+fresh fruits purchase,groceries
+vegetable market shopping,groceries
+
+uber ride to office,transport
+ola cab booking,transport
+auto rickshaw fare,transport
+bus ticket purchase,transport
+train ticket booking,transport
+metro card recharge,transport
+petrol refill,transport
+diesel fuel expense,transport
+bike fuel,transport
+cab ride home,transport
+taxi fare payment,transport
+ola ride to mall,transport
+uber ride airport,transport
+fuel expense bike,transport
+bus travel ticket,transport
+local train ticket,transport
+travel expense,transport
+commute by auto,transport
+ride booking ola,transport
+transport cost daily,transport
+
+movie ticket booking,entertainment
+cinema ticket inox,entertainment
+netflix subscription,entertainment
+amazon prime subscription,entertainment
+spotify subscription,entertainment
+youtube premium,entertainment
+game purchase online,entertainment
+pubg game purchase,entertainment
+concert ticket booking,entertainment
+theater show ticket,entertainment
+ipl match ticket,entertainment
+cricket match pass,entertainment
+amusement park entry,entertainment
+fun zone games,entertainment
+ott subscription,entertainment
+watch movie online,entertainment
+buy game credits,entertainment
+entertainment expense,entertainment
+gaming purchase,entertainment
+music subscription,entertainment
+
+electricity bill payment,utilities
+water bill payment,utilities
+gas cylinder refill,utilities
+wifi bill payment,utilities
+internet recharge,utilities
+mobile recharge prepaid,utilities
+postpaid bill payment,utilities
+broadband bill,utilities
+utility bill payment,utilities
+power bill payment,utilities
+electric bill paid,utilities
+wifi recharge,utilities
+gas bill payment,utilities
+phone recharge,utilities
+data recharge,utilities
+utility expense monthly,utilities
+electricity recharge,utilities
+internet bill monthly,utilities
+mobile data pack,utilities
+home utility bill,utilities
+
+doctor consultation fees,health
+medicine purchase pharmacy,health
+hospital bill payment,health
+clinic visit charges,health
+health checkup test,health
+medical bill payment,health
+bought medicines,health
+pharmacy purchase,health
+doctor visit expense,health
+health insurance premium,health
+blood test charges,health
+lab test expense,health
+dental checkup,health
+eye checkup,health
+medical expense,health
+clinic fees payment,health
+hospital charges,health
+buy medicines online,health
+healthcare expense,health
+doctor appointment fees,health
+
+school fees payment,education
+college fees payment,education
+books purchase online,education
+course subscription,education
+udemy course purchase,education
+online learning course,education
+tuition fees payment,education
+exam fees payment,education
+study materials purchase,education
+training course fees,education
+education loan payment,education
+library fees,education
+buy textbooks,education
+coaching class fees,education
+learning subscription,education
+study expense,education
+education expense,education
+buy notebooks,education
+course fee payment,education
+online class fees,education
+
+shopping clothes online,shopping
+bought shoes nike,shopping
+amazon shopping order,shopping
+flipkart shopping order,shopping
+mall shopping clothes,shopping
+buy t shirt,shopping
+buy jeans,shopping
+shopping accessories,shopping
+purchase handbag,shopping
+fashion shopping,shopping
+online order clothes,shopping
+retail shopping mall,shopping
+shopping expense,shopping
+buy watch,shopping
+buy mobile cover,shopping
+shopping for festival,shopping
+buy jacket,shopping
+shopping footwear,shopping
+clothing purchase,shopping
+shopping online payment,shopping
+
+gym membership fees,personal
+salon haircut,personal
+spa treatment charges,personal
+beauty products purchase,personal
+cosmetics shopping,personal
+fitness subscription,personal
+self care items,personal
+personal care expense,personal
+grooming expense,personal
+haircut salon,personal
+facial treatment,personal
+buy skincare products,personal
+personal grooming,personal
+fitness trainer fees,personal
+wellness expense,personal
+spa visit,personal
+self care shopping,personal
+beauty salon visit,personal
+cosmetic purchase,personal
+personal items shopping,personal
+
+upi payment to friend,others
+upi transfer,others
+money sent via upi,others
+phonepe payment,others
+google pay transfer,others
+paytm transfer,others
+cash withdrawal atm,others
+miscellaneous expense,others
+random expense,others
+unknown payment,others
