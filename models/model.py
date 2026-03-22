@@ -40,32 +40,38 @@ model = LogisticRegression()
 model.fit(X_vec, y)
 
 def detect_income(text):
-    text = text.lower()
-
     income_keywords = [
         "salary", "credited", "received", "income",
         "bonus", "refund", "cashback",
         "upi received", "money received",
-        "received from", "got money", "money from"
+        "received from", "got money",
+        "money from", "payment received"
     ]
 
+    # ✅ direct keyword match
     if any(word in text for word in income_keywords):
+        return True
+
+    # ✅ smart condition
+    if "from" in text and any(word in text for word in ["received", "got"]):
         return True
 
     return False
 
 # 🎯 Prediction function
 def predict_category(text):
-    # ✅ Step 1: Check income
-    if detect_income(text):
+    text_lower = text.lower()
+
+    # 🔥 STEP 1: Income detection (force category)
+    if detect_income(text_lower):
         return "income"
 
-    # ✅ Step 2: keyword rules (your existing)
-    rule = keyword_rule(text)
+    # 🔥 STEP 2: keyword rules (optional)
+    rule = keyword_rule(text_lower)
     if rule:
         return rule
 
-    # ✅ Step 3: ML prediction
+    # 🔥 STEP 3: ML model
     text = clean_text(text)
     text_vec = vectorizer.transform([text])
     return model.predict(text_vec)[0]

@@ -613,7 +613,7 @@ async function handleFormSubmit(event) {
     let accountName = expenseAccountSelect ? expenseAccountSelect.value : "";
 
     const currTypeInput = document.querySelector('input[name="transactionType"]:checked');
-    const type = currTypeInput ? currTypeInput.value : "Expense";
+    let type = currTypeInput ? currTypeInput.value : "Expense";
 
     const transDateInput = document.getElementById("transactionDate");
     const transDate = transDateInput && transDateInput.value ? new Date(transDateInput.value).toISOString() : new Date().toISOString();
@@ -639,6 +639,12 @@ async function handleFormSubmit(event) {
             console.log("ML error:", error);
             category = "Other";
         }
+    }
+
+    // Enforce the income logic again in case the ML determined it was an income source
+    const finalLcCat = (category || "").toLowerCase();
+    if (finalLcCat === "income" || finalLcCat === "salary") {
+        type = "Income";
     }
 
     if (editExpenseIdInput && editExpenseIdInput.value) {
@@ -919,6 +925,16 @@ function init() {
                             newOption.textContent = result.category;
                             categorySelect.appendChild(newOption);
                             categorySelect.value = result.category;
+                        }
+
+                        // Automatically toggle Transaction Type indicator to "Income" 
+                        const lcCat = result.category.toLowerCase();
+                        if (lcCat === "income" || lcCat === "salary") {
+                            const typeIncRadio = document.getElementById("typeIncome");
+                            if (typeIncRadio) typeIncRadio.checked = true;
+                        } else {
+                            const typeExpRadio = document.getElementById("typeExpense");
+                            if (typeExpRadio) typeExpRadio.checked = true;
                         }
                     }
                 } catch (error) {
