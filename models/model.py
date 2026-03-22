@@ -12,8 +12,17 @@ data = pd.read_csv(DATA_PATH)
 
 # 🧹 Clean text
 def clean_text(text):
-    text = text.lower()
+    text = str(text).lower()
+
+    # fix common typos
+    text = text.replace("restarant", "restaurant")
+    text = text.replace("movi", "movie")
+    text = text.replace("grocry", "grocery")
+    text = text.replace("petrol", "fuel")
+
+    # remove special chars
     text = re.sub(r'[^a-z\s]', '', text)
+
     return text
 
 data["description"] = data["description"].apply(clean_text)
