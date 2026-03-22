@@ -41,10 +41,14 @@ def add_cache_control_headers(response):
 def save_expenses():
     data = request.get_json()
 
+    print("📥 Incoming Data:", data)   # 👈 ADD THIS
+
     conn = get_connection()
     cursor = conn.cursor()
 
     for expense in data:
+        print("➡️ Saving:", expense)  # 👈 ADD THIS
+
         cursor.execute("""
             INSERT INTO expenses 
             (amount, description, category, type, date, time, account)
@@ -62,8 +66,9 @@ def save_expenses():
     conn.commit()
     conn.close()
 
-    return jsonify({"ok": True})
+    print("✅ Data saved")
 
+    return jsonify({"ok": True})
 
 # ✅ 2. LOAD EXPENSES
 @app.route("/load-expenses", methods=["GET"])

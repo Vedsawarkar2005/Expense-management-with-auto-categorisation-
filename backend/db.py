@@ -1,15 +1,18 @@
 import sqlite3
 from pathlib import Path
 
-# 📁 Database path
-DB_PATH = Path(__file__).resolve().parent.parent / "database" / "expenses.db"
+# 📁 Correct DB path
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "database" / "expenses.db"
 
-
+# ✅ Create connection
 def get_connection():
     return sqlite3.connect(DB_PATH)
 
-
+# ✅ Initialize DB
 def init_db():
+    print("🔥 DB INIT CALLED")
+
     conn = get_connection()
     cursor = conn.cursor()
 

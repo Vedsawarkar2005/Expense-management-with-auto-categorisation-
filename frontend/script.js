@@ -647,6 +647,11 @@ async function handleFormSubmit(event) {
         type = "Income";
     }
 
+    // Per user request: if Income, the category MUST be Income natively. 
+    if (type === "Income") {
+        category = "Income";
+    }
+
     if (editExpenseIdInput && editExpenseIdInput.value) {
         for (let i = 0; i < expenses.length; i++) {
             if (expenses[i].id === editExpenseIdInput.value) {
@@ -899,8 +904,34 @@ function init() {
         themeToggleBtn.addEventListener("click", toggleTheme);
     }
 
+    // Reciprocal binding for Transaction Type <-> Category
+    const typeIncomeRadio = document.getElementById("typeIncome");
+    const typeExpenseRadio = document.getElementById("typeExpense");
+
+    if (typeIncomeRadio) {
+        typeIncomeRadio.addEventListener("change", function () {
+            if (this.checked && categorySelect) {
+                categorySelect.value = "Income";
+            }
+        });
+    }
+    if (categorySelect) {
+        categorySelect.addEventListener("change", function () {
+            const val = this.value.toLowerCase();
+            if (val === "income" || val === "salary") {
+                if (typeIncomeRadio) typeIncomeRadio.checked = true;
+            } else {
+                if (typeExpenseRadio) typeExpenseRadio.checked = true;
+            }
+        });
+    }
+
     if (descriptionInput) {
         descriptionInput.addEventListener("blur", async function () {
+            // Prevent ML from undoing the user's manual Income selection
+            const typeIncR = document.getElementById("typeIncome");
+            if (typeIncR && typeIncR.checked) return;
+
             const desc = descriptionInput.value.trim();
             if (desc) {
                 try {
@@ -927,14 +958,11 @@ function init() {
                             categorySelect.value = result.category;
                         }
 
-                        // Automatically toggle Transaction Type indicator to "Income" 
+                        // Automatically toggle Transaction Type indicator to "Income" if ML overrides it
                         const lcCat = result.category.toLowerCase();
                         if (lcCat === "income" || lcCat === "salary") {
                             const typeIncRadio = document.getElementById("typeIncome");
                             if (typeIncRadio) typeIncRadio.checked = true;
-                        } else {
-                            const typeExpRadio = document.getElementById("typeExpense");
-                            if (typeExpRadio) typeExpRadio.checked = true;
                         }
                     }
                 } catch (error) {
