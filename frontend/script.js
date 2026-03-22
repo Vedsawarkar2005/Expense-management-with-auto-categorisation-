@@ -11,7 +11,10 @@ const expenseForm = document.getElementById("expenseForm");
 const amountInput = document.getElementById("amount");
 const descriptionInput = document.getElementById("description");
 const categorySelect = document.getElementById("category");
+const transactionDateInput = document.getElementById("transactionDate");
 const expenseAccountSelect = document.getElementById("expenseAccount");
+const editExpenseIdInput = document.getElementById("editExpenseId");
+const modalTitleText = document.getElementById("modalTitleText");
 const expenseTableBody = document.getElementById("expenseTableBody");
 const totalAmountEl = document.getElementById("totalAmount");
 const balanceAmountEl = document.getElementById("balanceAmount");
@@ -142,17 +145,31 @@ function saveAccountsToStorage(accountList) {
 // Creates a single table row (<tr>) element for the given expense object.
 function createExpenseRow(expense) {
     const tr = document.createElement("tr");
-    tr.dataset.id = expense.id; // keep the id on the row so we can delete it later
+    tr.dataset.id = expense.id;
+
+    const dateObj = new Date(expense.createdAt);
+    const dateStr = !isNaN(dateObj) ? dateObj.toLocaleString([], {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    }) : expense.createdAt;
+
+    const isIncome = expense.type === "Income";
+    const amountColor = isIncome ? "text-success" : "text-danger";
+    const sign = isIncome ? "+" : "-";
 
     tr.innerHTML = `
-        <td>${formatCurrency(expense.amount)}</td>
+        <td><small class="text-muted">${dateStr}</small></td>
+        <td><span class="badge ${isIncome ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} rounded-pill">${expense.type || "Expense"}</span></td>
+        <td class="${amountColor} fw-semibold">${sign}${formatCurrency(expense.amount)}</td>
         <td>${expense.description}</td>
-        <td>${expense.category}</td>
+        <td><span class="category-pill bg-light border">${expense.category}</span></td>
         <td>${expense.accountName || "-"}</td>
         <td class="text-end">
-            <button class="btn btn-sm btn-outline-danger btn-delete-expense">
+            <button class="btn btn-sm btn-outline-primary btn-edit-expense me-2" title="Edit">
+                <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger btn-delete-expense" title="Delete">
                 <i class="bi bi-trash"></i>
-                Delete
             </button>
         </td>
     `;
@@ -178,12 +195,17 @@ function renderExpenses() {
 // Creates a table row element for a given bank account.
 function createAccountRow(account) {
     let spent = 0;
+    let earned = 0;
     for (let i = 0; i < expenses.length; i++) {
         if (expenses[i].accountName === account.name) {
-            spent += expenses[i].amount;
+            if (expenses[i].type === "Income") {
+                earned += expenses[i].amount;
+            } else {
+                spent += expenses[i].amount;
+            }
         }
     }
-    const remaining = account.balance - spent;
+    const remaining = account.balance + earned - spent;
     const tr = document.createElement("tr");
     tr.innerHTML = `
         <td>${account.name}</td>
@@ -215,21 +237,25 @@ function renderAccounts() {
 // and also updates the "Available Balance" as:
 //   total across all bank accounts - total expenses.
 function updateTotal() {
-    let total = 0;
+    let totalIncome = 0;
+    let totalExpense = 0;
 
     for (let i = 0; i < expenses.length; i++) {
-        total += expenses[i].amount;
+        if (expenses[i].type === "Income") {
+            totalIncome += expenses[i].amount;
+        } else {
+            totalExpense += expenses[i].amount;
+        }
     }
 
-    totalAmountEl.textContent = formatCurrency(total);
+    totalAmountEl.textContent = formatCurrency(totalExpense);
 
-    // Available balance is driven by the total across all bank accounts minus expenses.
     if (balanceAmountEl) {
         let bankTotal = 0;
         for (let i = 0; i < accounts.length; i++) {
             bankTotal += accounts[i].balance;
         }
-        const available = bankTotal - total;
+        const available = bankTotal + totalIncome - totalExpense;
         balanceAmountEl.textContent = formatCurrency(available);
     }
 }
@@ -241,19 +267,22 @@ function updateBankTotal() {
         return;
     }
 
-    let total = 0;
+    let initialBankTotal = 0;
     for (let i = 0; i < accounts.length; i++) {
-        total += accounts[i].balance;
+        initialBankTotal += accounts[i].balance;
     }
 
-    let expenseTotal = 0;
+    let netChange = 0;
     for (let i = 0; i < expenses.length; i++) {
-        expenseTotal += expenses[i].amount;
+        if (expenses[i].type === "Income") {
+            netChange += expenses[i].amount;
+        } else {
+            netChange -= expenses[i].amount;
+        }
     }
 
-    const remaining = total - expenseTotal;
+    const remaining = initialBankTotal + netChange;
     bankTotalEl.textContent = formatCurrency(remaining);
-
 }
 
 // updateEmptyState()
@@ -291,14 +320,15 @@ function updateBankEmptyState() {
 
 // addExpense(amount, description, category)
 // Creates a new expense object and updates memory, localStorage, and the UI.
-function addExpense(amount, description, category, accountName) {
+function addExpense(amount, description, category, accountName, type, transDate) {
     const newExpense = {
         id: generateId(),
+        type: type || "Expense",
         amount: amount,
         description: description,
         category: category,
         accountName: accountName || "",
-        createdAt: new Date().toISOString(),
+        createdAt: transDate || new Date().toISOString(),
     };
 
     // Add the new expense at the beginning so we see it at the top of the table.
@@ -461,32 +491,66 @@ async function handleFormSubmit(event) {
     let category = categorySelect.value;
     let accountName = expenseAccountSelect ? expenseAccountSelect.value : "";
 
+    const currTypeInput = document.querySelector('input[name="transactionType"]:checked');
+    const type = currTypeInput ? currTypeInput.value : "Expense";
+
+    const transDateInput = document.getElementById("transactionDate");
+    const transDate = transDateInput && transDateInput.value ? new Date(transDateInput.value).toISOString() : new Date().toISOString();
+
     if (!description || isNaN(amount)) return;
 
-    // Automatically set default account if user didn't pick one
     if (!accountName) {
         accountName = getDefaultAccount();
     }
 
-    // 🔥 CALL BACKEND ML API
-    try {
-        const response = await fetch("http://127.0.0.1:5000/predict-category", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ description: description })
-        });
+    if (!category || category === "") {
+        try {
+            const response = await fetch("http://127.0.0.1:5000/predict-category", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ description: description })
+            });
 
-        const result = await response.json();
-        category = result.category;
+            const result = await response.json();
+            category = result.category;
 
-    } catch (error) {
-        console.log("ML error:", error);
+        } catch (error) {
+            console.log("ML error:", error);
+            category = "Other";
+        }
     }
 
-    addExpense(amount, description, category, accountName);
+    if (editExpenseIdInput && editExpenseIdInput.value) {
+        for (let i = 0; i < expenses.length; i++) {
+            if (expenses[i].id === editExpenseIdInput.value) {
+                expenses[i].amount = amount;
+                expenses[i].description = description;
+                expenses[i].category = category;
+                expenses[i].accountName = accountName;
+                expenses[i].type = type;
+                expenses[i].createdAt = transDate;
+                break;
+            }
+        }
+        saveExpensesToStorage(expenses);
+        sendExpensesToServer();
+        renderExpenses();
+        updateTotal();
+        renderAccounts();
+        updateBankTotal();
+    } else {
+        addExpense(amount, description, category, accountName, type, transDate);
+    }
+
     expenseForm.reset();
+    if (editExpenseIdInput) editExpenseIdInput.value = "";
+    if (modalTitleText) modalTitleText.textContent = "Add Transaction";
+
+    const modalEl = document.getElementById('transactionModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
 }
 
 // handleTableClick(event)
@@ -494,14 +558,79 @@ async function handleFormSubmit(event) {
 // We use "event delegation" to check if they clicked a "Delete" button.
 function handleTableClick(event) {
     const target = event.target;
-    // target.closest() finds the element itself or the nearest ancestor matching the selector
-    const deleteBtn = target.closest('.btn-delete-expense');
 
+    const deleteBtn = target.closest('.btn-delete-expense');
     if (deleteBtn) {
         const tr = deleteBtn.closest('tr');
         if (tr && tr.dataset.id) {
             deleteExpense(tr.dataset.id);
         }
+        return;
+    }
+
+    const editBtn = target.closest('.btn-edit-expense');
+    if (editBtn) {
+        const tr = editBtn.closest('tr');
+        if (tr && tr.dataset.id) {
+            editExpense(tr.dataset.id);
+        }
+    }
+}
+
+// editExpense(id)
+// Loads an existing expense into the modal for editing
+function editExpense(id) {
+    const expense = expenses.find(e => e.id === id);
+    if (!expense) return;
+
+    if (editExpenseIdInput) editExpenseIdInput.value = expense.id;
+    amountInput.value = expense.amount;
+    descriptionInput.value = expense.description;
+
+    let optionFound = false;
+    for (let i = 0; i < categorySelect.options.length; i++) {
+        if (categorySelect.options[i].value === expense.category) {
+            categorySelect.selectedIndex = i;
+            optionFound = true;
+            break;
+        }
+    }
+    if (!optionFound) {
+        const newOption = document.createElement("option");
+        newOption.value = expense.category;
+        newOption.textContent = expense.category;
+        categorySelect.appendChild(newOption);
+        categorySelect.value = expense.category;
+    }
+
+    if (expenseAccountSelect) {
+        expenseAccountSelect.value = expense.accountName;
+    }
+
+    const typeExpRadio = document.getElementById("typeExpense");
+    const typeIncRadio = document.getElementById("typeIncome");
+    if (expense.type === "Income" && typeIncRadio) {
+        typeIncRadio.checked = true;
+    } else if (typeExpRadio) {
+        typeExpRadio.checked = true;
+    }
+
+    if (transactionDateInput) {
+        const d = new Date(expense.createdAt);
+        if (!isNaN(d)) {
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            transactionDateInput.value = d.toISOString().slice(0, 16);
+        }
+    }
+
+    if (modalTitleText) {
+        modalTitleText.textContent = "Edit Transaction";
+    }
+
+    const modalEl = document.getElementById('transactionModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modalInstance.show();
     }
 }
 
@@ -529,6 +658,64 @@ function handleBankFormSubmit(event) {
 // This function is called once when the script loads.
 // It sets up the initial state and all event listeners.
 function init() {
+    if (descriptionInput) {
+        descriptionInput.addEventListener("blur", async function () {
+            const desc = descriptionInput.value.trim();
+            if (desc) {
+                try {
+                    const response = await fetch("http://127.0.0.1:5000/predict-category", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ description: desc })
+                    });
+                    const result = await response.json();
+                    if (result.category) {
+                        let optionFound = false;
+                        for (let i = 0; i < categorySelect.options.length; i++) {
+                            if (categorySelect.options[i].value === result.category) {
+                                categorySelect.selectedIndex = i;
+                                optionFound = true;
+                                break;
+                            }
+                        }
+                        if (!optionFound) {
+                            const newOption = document.createElement("option");
+                            newOption.value = result.category;
+                            newOption.textContent = result.category;
+                            categorySelect.appendChild(newOption);
+                            categorySelect.value = result.category;
+                        }
+                    }
+                } catch (error) {
+                    console.log("ML background fetch error:", error);
+                }
+            }
+        });
+    }
+
+    const tDateInput = document.getElementById("transactionDate");
+    if (tDateInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        tDateInput.value = now.toISOString().slice(0, 16);
+
+        const modalEl = document.getElementById('transactionModal');
+        if (modalEl) {
+            modalEl.addEventListener('show.bs.modal', event => {
+                // Determine if this was opened by the 'Add Transaction' button
+                if (event.relatedTarget && event.relatedTarget.getAttribute('data-bs-target') === '#transactionModal') {
+                    expenseForm.reset();
+                    if (editExpenseIdInput) editExpenseIdInput.value = "";
+                    if (modalTitleText) modalTitleText.textContent = "Add Transaction";
+
+                    const now = new Date();
+                    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                    tDateInput.value = now.toISOString().slice(0, 16);
+                }
+            });
+        }
+    }
+
     // Load existing expenses from localStorage into memory.
     expenses = loadExpensesFromStorage();
 
