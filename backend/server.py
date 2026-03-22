@@ -4,6 +4,8 @@ from pathlib import Path
 import json
 from flask_cors import CORS
 from models.model import predict_category
+from backend.db import init_db
+from backend.db import get_connection
 
 app = Flask(__name__)
 # Disable cache for static files in development
@@ -37,34 +39,55 @@ def add_cache_control_headers(response):
 # ✅ 1. SAVE EXPENSES
 @app.route("/save-expenses", methods=["POST"])
 def save_expenses():
-    data = request.get_json(silent=True)
+    data = request.get_json()
 
-    if not isinstance(data, list):
-        return jsonify({"ok": False, "error": "Expected a list of expenses"}), 400
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    lines = []
     for expense in data:
-        lines.append(json.dumps(expense, ensure_ascii=False))
+        cursor.execute("""
+            INSERT INTO expenses 
+            (amount, description, category, type, date, time, account)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            expense.get("amount"),
+            expense.get("description"),
+            expense.get("category"),
+            expense.get("type"),
+            expense.get("date"),
+            expense.get("time"),
+            expense.get("account")
+        ))
 
-    DATA_FILE.write_text("\n".join(lines), encoding="utf-8")
+    conn.commit()
+    conn.close()
 
-    return jsonify({"ok": True, "count": len(data)})
+    return jsonify({"ok": True})
 
 
 # ✅ 2. LOAD EXPENSES
 @app.route("/load-expenses", methods=["GET"])
 def load_expenses():
-    if not DATA_FILE.exists():
-        return jsonify([])
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    lines = DATA_FILE.read_text(encoding="utf-8").splitlines()
+    cursor.execute("SELECT * FROM expenses")
+    rows = cursor.fetchall()
+
+    conn.close()
 
     expenses = []
-    for line in lines:
-        try:
-            expenses.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
+    for row in rows:
+        expenses.append({
+            "id": row[0],
+            "amount": row[1],
+            "description": row[2],
+            "category": row[3],
+            "type": row[4],
+            "date": row[5],
+            "time": row[6],
+            "account": row[7]
+        })
 
     return jsonify(expenses)
 
@@ -83,7 +106,6 @@ def predict_category_api():
         "category": category
     })
 
-
-# ▶️ RUN SERVER
 if __name__ == "__main__":
+    init_db()  
     app.run(debug=True)

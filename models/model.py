@@ -27,6 +27,20 @@ def clean_text(text):
 
     return text
 
+def keyword_rule(text):
+    text = text.lower()
+
+    if any(word in text for word in ["dinner", "lunch", "pizza", "food", "restaurant"]):
+        return "food"
+    if any(word in text for word in ["movie", "netflix", "game"]):
+        return "entertainment"
+    if any(word in text for word in ["uber", "taxi", "fuel", "petrol"]):
+        return "transport"
+    if any(word in text for word in ["grocery", "milk", "vegetables"]):
+        return "groceries"
+
+    return None
+    
 data["description"] = data["description"].apply(clean_text)
 
 X = data["description"]
