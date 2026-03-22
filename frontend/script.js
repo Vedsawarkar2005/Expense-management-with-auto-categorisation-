@@ -30,6 +30,14 @@ const bankTotalEl = document.getElementById("bankTotal");
 const bankEmptyStateEl = document.getElementById("bankEmptyState");
 const defaultAccountSelect = document.getElementById("defaultAccountSelect");
 const editOriginalAccountNameInput = document.getElementById("editOriginalAccountName");
+
+// Dashboard Elements
+const summaryIncomeEl = document.getElementById("summaryIncome");
+const summaryExpenseEl = document.getElementById("summaryExpense");
+const summaryBalanceEl = document.getElementById("summaryBalance");
+const expenseChartCanvas = document.getElementById("expenseChart");
+const chartEmptyState = document.getElementById("chartEmptyState");
+let expenseChartInstance = null;
 const bankFormBtnText = document.getElementById("bankFormBtnText");
 const bankFormBtnIcon = document.getElementById("bankFormBtnIcon");
 
@@ -251,24 +259,93 @@ function renderAccounts() {
 function updateTotal() {
     let totalIncome = 0;
     let totalExpense = 0;
+    const categoryTotals = {};
 
     for (let i = 0; i < expenses.length; i++) {
         if (expenses[i].type === "Income") {
             totalIncome += expenses[i].amount;
         } else {
             totalExpense += expenses[i].amount;
+
+            const cat = expenses[i].category || "Other";
+            if (!categoryTotals[cat]) {
+                categoryTotals[cat] = 0;
+            }
+            categoryTotals[cat] += expenses[i].amount;
         }
     }
 
-    totalAmountEl.textContent = formatCurrency(totalExpense);
+    if (totalAmountEl) totalAmountEl.textContent = formatCurrency(totalExpense);
 
-    if (balanceAmountEl) {
-        let bankTotal = 0;
-        for (let i = 0; i < accounts.length; i++) {
-            bankTotal += accounts[i].balance;
+    let bankTotal = 0;
+    for (let i = 0; i < accounts.length; i++) {
+        bankTotal += accounts[i].balance;
+    }
+    const available = bankTotal + totalIncome - totalExpense;
+
+    if (balanceAmountEl) balanceAmountEl.textContent = formatCurrency(available);
+
+    if (summaryIncomeEl) summaryIncomeEl.textContent = formatCurrency(totalIncome);
+    if (summaryExpenseEl) summaryExpenseEl.textContent = formatCurrency(totalExpense);
+    if (summaryBalanceEl) summaryBalanceEl.textContent = formatCurrency(available);
+
+    updateChart(categoryTotals, totalExpense);
+}
+
+function updateChart(categoryTotals, totalExpense) {
+    if (!expenseChartCanvas) return;
+
+    if (totalExpense === 0) {
+        if (chartEmptyState) chartEmptyState.classList.remove("d-none");
+        if (expenseChartInstance) {
+            expenseChartInstance.destroy();
+            expenseChartInstance = null;
         }
-        const available = bankTotal + totalIncome - totalExpense;
-        balanceAmountEl.textContent = formatCurrency(available);
+        return;
+    }
+
+    if (chartEmptyState) chartEmptyState.classList.add("d-none");
+
+    const labels = Object.keys(categoryTotals);
+    const data = Object.values(categoryTotals);
+
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED'
+    ];
+
+    if (expenseChartInstance) {
+        expenseChartInstance.data.labels = labels;
+        expenseChartInstance.data.datasets[0].data = data;
+        expenseChartInstance.update();
+    } else {
+        const ctx = expenseChartCanvas.getContext('2d');
+        expenseChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { family: 'system-ui', size: 12 },
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    }
+                },
+                cutout: '75%'
+            }
+        });
     }
 }
 
