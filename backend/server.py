@@ -4,8 +4,9 @@ from pathlib import Path
 import json
 from flask_cors import CORS
 from models.model import predict_category
-from backend.db import init_db
-from backend.db import get_connection
+from backend.db import init_db, get_connection
+
+init_db()  
 
 app = Flask(__name__)
 # Disable cache for static files in development
@@ -112,5 +113,4 @@ def predict_category_api():
     })
 
 if __name__ == "__main__":
-    init_db()  
     app.run(debug=True)
