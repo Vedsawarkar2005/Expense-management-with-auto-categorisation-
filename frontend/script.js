@@ -41,6 +41,38 @@ let expenseChartInstance = null;
 const bankFormBtnText = document.getElementById("bankFormBtnText");
 const bankFormBtnIcon = document.getElementById("bankFormBtnIcon");
 
+// Theme Toggle
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+const themeIcon = document.getElementById("themeIcon");
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute("data-bs-theme", theme);
+    if (theme === "dark") {
+        if (themeIcon) {
+            themeIcon.classList.remove("bi-moon-stars-fill");
+            themeIcon.classList.add("bi-sun-fill");
+        }
+        if (typeof Chart !== 'undefined') Chart.defaults.color = "#cbd5e1";
+    } else {
+        if (themeIcon) {
+            themeIcon.classList.remove("bi-sun-fill");
+            themeIcon.classList.add("bi-moon-stars-fill");
+        }
+        if (typeof Chart !== 'undefined') Chart.defaults.color = "#18230F";
+    }
+
+    if (expenseChartInstance) {
+        expenseChartInstance.update();
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-bs-theme") || "light";
+    const newTheme = currentTheme === "light" ? "dark" : "light";
+    localStorage.setItem("expense_tracker_theme", newTheme);
+    applyTheme(newTheme);
+}
+
 // Keys under which we store data in the browser's localStorage.
 const STORAGE_KEY = "smart_expense_tracker_expenses";
 const BANK_STORAGE_KEY = "smart_expense_tracker_bank_accounts";
@@ -854,6 +886,13 @@ function handleBankAccountClick(event) {
 // This function is called once when the script loads.
 // It sets up the initial state and all event listeners.
 function init() {
+    // Theme setup
+    const savedTheme = localStorage.getItem("expense_tracker_theme") || "light";
+    applyTheme(savedTheme);
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener("click", toggleTheme);
+    }
+
     if (descriptionInput) {
         descriptionInput.addEventListener("blur", async function () {
             const desc = descriptionInput.value.trim();
