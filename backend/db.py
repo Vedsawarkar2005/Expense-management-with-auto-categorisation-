@@ -5,9 +5,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "database" / "expenses.db"
 
-# ✅ Create connection
 def get_connection():
-    return sqlite3.connect(DB_PATH)
+    return sqlite3.connect(
+        "database/expenses.db",
+        timeout=10,             
+        check_same_thread=False  
+    )
 
 # ✅ Initialize DB
 def init_db():

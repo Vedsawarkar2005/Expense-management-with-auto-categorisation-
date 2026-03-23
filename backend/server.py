@@ -41,28 +41,39 @@ def add_cache_control_headers(response):
 @app.route("/save-expenses", methods=["POST"])
 def save_expenses():
     data = request.get_json()
-
-    print("📥 Incoming Data:", data)   # 👈 ADD THIS
+    print("📥 Incoming Data:", data)
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    for expense in data:
-        print("➡️ Saving:", expense)  # 👈 ADD THIS
+    try:
+        for expense in data:
+            print("➡️ Saving:", expense)
 
-        cursor.execute("""
-            INSERT INTO expenses 
-            (amount, description, category, type, date, time, account)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            expense.get("amount"),
-            expense.get("description"),
-            expense.get("category"),
-            expense.get("type"),
-            expense.get("date"),
-            expense.get("time"),
-            expense.get("account")
-        ))
+            cursor.execute("""
+                INSERT INTO expenses 
+                (amount, description, category, type, date, time, account)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                expense.get("amount"),
+                expense.get("description"),
+                expense.get("category"),
+                expense.get("type"),
+                expense.get("createdAt"),   # 🔥 fix field mapping
+                "",                         # time (optional)
+                expense.get("accountName")
+            ))
+
+        conn.commit()
+        print("✅ Data saved")
+
+    except Exception as e:
+        print("❌ ERROR:", e)
+
+    finally:
+        conn.close()   # 🔥 ALWAYS close
+
+    return jsonify({"ok": True})
 
     conn.commit()
     conn.close()
