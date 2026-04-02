@@ -88,4 +88,4 @@ def predict_category(text):
     # 🔥 STEP 3: ML model
     text = clean_text(text)
     text_vec = vectorizer.transform([text])
-    return model.predict(text_vec)[0]
+    return str(model.predict(text_vec)[0])

@@ -67,14 +67,14 @@ def save_expenses():
 
         conn.commit()
         print("✅ Data saved")
+        return jsonify({"ok": True})
 
     except Exception as e:
         print("❌ ERROR:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
 
     finally:
         conn.close()   # 🔥 ALWAYS close
-
-    return jsonify({"ok": True})
 
     conn.commit()
     conn.close()
