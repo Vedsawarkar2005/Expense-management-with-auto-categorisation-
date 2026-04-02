@@ -155,8 +155,12 @@
             <!-- Header -->
             <header class="glass-panel rounded-3xl px-6 py-4 flex items-center justify-between sticky top-0 z-30">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Expenses Tracker</h2>
-                    <p class="text-slate-500 text-sm font-medium mt-0.5">Manage your daily finances</p>
+                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight"
+                        x-text="activeTab === 'Home' ? 'Expenses Tracker' : activeTab + ' Management'">Expenses Tracker
+                    </h2>
+                    <p class="text-slate-500 text-sm font-medium mt-0.5"
+                        x-text="activeTab === 'Home' ? 'Manage your daily finances' : 'Manage your connected accounts & wallets'">
+                        Manage your daily finances</p>
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -194,159 +198,226 @@
                 </div>
             </header>
 
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <!-- Dashboard Content Wrapper (Home Default) -->
+            <div x-show="activeTab === 'Home'" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                class="flex flex-col gap-5 flex-1">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
-                <!-- Total Balance -->
-                <div
-                    class="glass-panel p-7 rounded-[2rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white relative overflow-hidden group shadow-lg shadow-indigo-200">
-                    <!-- Decorative Elements -->
+                    <!-- Total Balance -->
                     <div
-                        class="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700">
-                    </div>
-                    <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl"></div>
+                        class="glass-panel p-7 rounded-[2rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white relative overflow-hidden group shadow-lg shadow-indigo-200">
+                        <!-- Decorative Elements -->
+                        <div
+                            class="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700">
+                        </div>
+                        <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl">
+                        </div>
 
-                    <div class="flex justify-between items-start relative z-10 mb-6">
-                        <div>
-                            <p class="text-indigo-100 font-medium mb-1.5 opacity-90 text-sm uppercase tracking-wider">
-                                Monthly Balance</p>
-                            <!-- Jinja placeholder support -->
-                            <h3 class="text-4xl font-bold tracking-tight">{{ balance | default("$12,450.00", true) }}
-                            </h3>
+                        <div class="flex justify-between items-start relative z-10 mb-6">
+                            <div>
+                                <p
+                                    class="text-indigo-100 font-medium mb-1.5 opacity-90 text-sm uppercase tracking-wider">
+                                    Monthly Balance</p>
+                                <!-- Jinja placeholder support -->
+                                <h3 class="text-4xl font-bold tracking-tight">{{ balance | default("$12,450.00", true)
+                                    }}
+                                </h3>
+                            </div>
+                            <div
+                                class="p-3 bg-white/20 rounded-[1.25rem] backdrop-blur-md border border-white/20 shadow-inner">
+                                <i class="ph ph-wallet text-2xl text-white"></i>
+                            </div>
                         </div>
-                        <div
-                            class="p-3 bg-white/20 rounded-[1.25rem] backdrop-blur-md border border-white/20 shadow-inner">
-                            <i class="ph ph-wallet text-2xl text-white"></i>
+                        <div class="flex items-center justify-between relative z-10">
+                            <div
+                                class="flex items-center gap-2 text-xs font-semibold bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md">
+                                <i class="ph ph-trend-up text-emerald-300"></i>
+                                <span class="text-white">+2.5% vs last month</span>
+                            </div>
+                            <div class="text-indigo-200 text-sm font-medium">Valid Thru 12/28</div>
                         </div>
                     </div>
-                    <div class="flex items-center justify-between relative z-10">
-                        <div
-                            class="flex items-center gap-2 text-xs font-semibold bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md">
-                            <i class="ph ph-trend-up text-emerald-300"></i>
-                            <span class="text-white">+2.5% vs last month</span>
+
+                    <!-- Total Income -->
+                    <div
+                        class="glass-panel p-6 rounded-[2rem] flex flex-col justify-between group hover:bg-white/80 transition-colors duration-300">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <p
+                                    class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
+                                    Total Income</p>
+                                <h3 class="text-3xl font-bold text-slate-800">{{ income | default("$8,200.00", true) }}
+                                </h3>
+                            </div>
+                            <div
+                                class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">
+                                <i class="ph ph-arrow-down-left text-2xl"></i>
+                            </div>
                         </div>
-                        <div class="text-indigo-200 text-sm font-medium">Valid Thru 12/28</div>
+                        <!-- Sparkline Chart -->
+                        <div class="h-16 w-full -mb-2">
+                            <canvas id="incomeTrendChart"></canvas>
+                        </div>
                     </div>
+
+                    <!-- Total Expenses -->
+                    <div
+                        class="glass-panel p-6 rounded-[2rem] flex flex-col justify-between group hover:bg-white/80 transition-colors duration-300 md:col-span-2 xl:col-span-1">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <p
+                                    class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
+                                    Total Expenses</p>
+                                <h3 class="text-3xl font-bold text-slate-800">{{ expenses | default("$3,450.00", true)
+                                    }}
+                                </h3>
+                            </div>
+                            <div
+                                class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-rose-100 to-rose-50 flex items-center justify-center text-rose-600 shadow-sm border border-rose-100">
+                                <i class="ph ph-arrow-up-right text-2xl"></i>
+                            </div>
+                        </div>
+                        <!-- Sparkline Chart -->
+                        <div class="h-16 w-full -mb-2">
+                            <canvas id="expenseTrendChart"></canvas>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Total Income -->
-                <div
-                    class="glass-panel p-6 rounded-[2rem] flex flex-col justify-between group hover:bg-white/80 transition-colors duration-300">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
-                                Total Income</p>
-                            <h3 class="text-3xl font-bold text-slate-800">{{ income | default("$8,200.00", true) }}</h3>
-                        </div>
-                        <div
-                            class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">
-                            <i class="ph ph-arrow-down-left text-2xl"></i>
-                        </div>
-                    </div>
-                    <!-- Sparkline Chart -->
-                    <div class="h-16 w-full -mb-2">
-                        <canvas id="incomeTrendChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Total Expenses -->
-                <div
-                    class="glass-panel p-6 rounded-[2rem] flex flex-col justify-between group hover:bg-white/80 transition-colors duration-300 md:col-span-2 xl:col-span-1">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
-                                Total Expenses</p>
-                            <h3 class="text-3xl font-bold text-slate-800">{{ expenses | default("$3,450.00", true) }}
-                            </h3>
-                        </div>
-                        <div
-                            class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-rose-100 to-rose-50 flex items-center justify-center text-rose-600 shadow-sm border border-rose-100">
-                            <i class="ph ph-arrow-up-right text-2xl"></i>
+                <!-- Recent Transactions Table -->
+                <div class="glass-panel rounded-[2rem] p-7 flex flex-col flex-1 min-h-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800 tracking-tight">Recent Transactions</h3>
+                        <div class="flex gap-2">
+                            <button
+                                class="p-2 border border-slate-200 text-slate-500 rounded-xl hover:bg-white hover:text-indigo-600 transition-colors"><i
+                                    class="ph ph-funnel"></i></button>
+                            <a href="#"
+                                class="px-4 py-2 bg-white text-sm font-semibold rounded-xl text-indigo-600 hover:bg-indigo-50 hover:shadow-sm border border-slate-100 transition-all">View
+                                All</a>
                         </div>
                     </div>
-                    <!-- Sparkline Chart -->
-                    <div class="h-16 w-full -mb-2">
-                        <canvas id="expenseTrendChart"></canvas>
-                    </div>
-                </div>
 
-            </div>
-
-            <!-- Recent Transactions Table -->
-            <div class="glass-panel rounded-[2rem] p-7 flex flex-col flex-1 min-h-[400px]">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold text-slate-800 tracking-tight">Recent Transactions</h3>
-                    <div class="flex gap-2">
-                        <button
-                            class="p-2 border border-slate-200 text-slate-500 rounded-xl hover:bg-white hover:text-indigo-600 transition-colors"><i
-                                class="ph ph-funnel"></i></button>
-                        <a href="#"
-                            class="px-4 py-2 bg-white text-sm font-semibold rounded-xl text-indigo-600 hover:bg-indigo-50 hover:shadow-sm border border-slate-100 transition-all">View
-                            All</a>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto pb-4">
-                    <table class="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
-                        <thead>
-                            <tr class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200/60">
-                                <th class="pb-3 px-4 font-semibold">Transaction Description</th>
-                                <th class="pb-3 px-4 font-semibold hidden sm:table-cell">Date</th>
-                                <th class="pb-3 px-4 font-semibold hidden md:table-cell">Method</th>
-                                <th class="pb-3 px-4 font-semibold hidden lg:table-cell">Tags</th>
-                                <th class="pb-3 px-4 font-semibold text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm">
-                            <template x-for="tx in recentTransactions" :key="tx.id">
+                    <div class="overflow-x-auto pb-4">
+                        <table class="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
+                            <thead>
                                 <tr
-                                    class="group hover:bg-white/60 transition-colors border-b border-slate-100/50 last:border-0">
-                                    <td class="py-4 px-4 flex items-center gap-4">
-                                        <div class="w-12 h-12 rounded-[1.1rem] flex items-center justify-center text-xl shadow-sm border"
-                                            :class="[tx.iconBg, tx.iconBorder]">
-                                            <i :class="[tx.icon, tx.iconColor]"></i>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 text-[15px]" x-text="tx.merchant"></p>
-                                            <p class="text-xs font-medium text-slate-500 mt-0.5" x-text="tx.category">
-                                            </p>
-                                        </div>
-                                    </td>
-                                    <td class="py-4 px-4 hidden sm:table-cell">
-                                        <span
-                                            class="text-slate-600 font-medium bg-slate-100/50 px-2.5 py-1 rounded-lg text-xs"
-                                            x-text="formatDate(tx.date)"></span>
-                                    </td>
-                                    <td class="py-4 px-4 text-slate-600 font-medium hidden md:table-cell">
-                                        <div class="flex items-center gap-2">
-                                            <div
-                                                class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                                                <i class="ph text-base" :class="tx.methodIcon"></i>
-                                            </div>
-                                            <span x-text="tx.method"></span>
-                                        </div>
-                                    </td>
-                                    <td class="py-4 px-4 hidden lg:table-cell">
-                                        <div class="flex gap-1.5 flex-wrap">
-                                            <template x-for="tag in tx.tags">
-                                                <span
-                                                    class="px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider"
-                                                    :class="getTagColor(tag)" x-text="'#'+tag"></span>
-                                            </template>
-                                        </div>
-                                    </td>
-                                    <td class="py-4 px-4 text-right">
-                                        <span class="font-bold text-base"
-                                            :class="tx.amount > 0 ? 'text-emerald-500' : 'text-slate-800'"
-                                            x-text="formatCurrency(tx.amount)"></span>
-                                    </td>
+                                    class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200/60">
+                                    <th class="pb-3 px-4 font-semibold">Transaction Description</th>
+                                    <th class="pb-3 px-4 font-semibold hidden sm:table-cell">Date</th>
+                                    <th class="pb-3 px-4 font-semibold hidden md:table-cell">Method</th>
+                                    <th class="pb-3 px-4 font-semibold hidden lg:table-cell">Tags</th>
+                                    <th class="pb-3 px-4 font-semibold text-right">Amount</th>
                                 </tr>
-                            </template>
+                            </thead>
+                            <tbody class="text-sm">
+                                <template x-for="tx in recentTransactions" :key="tx.id">
+                                    <tr
+                                        class="group hover:bg-white/60 transition-colors border-b border-slate-100/50 last:border-0">
+                                        <td class="py-4 px-4 flex items-center gap-4">
+                                            <div class="w-12 h-12 rounded-[1.1rem] flex items-center justify-center text-xl shadow-sm border"
+                                                :class="[tx.iconBg, tx.iconBorder]">
+                                                <i :class="[tx.icon, tx.iconColor]"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-bold text-slate-800 text-[15px]" x-text="tx.merchant">
+                                                </p>
+                                                <p class="text-xs font-medium text-slate-500 mt-0.5"
+                                                    x-text="tx.category">
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-4 hidden sm:table-cell">
+                                            <span
+                                                class="text-slate-600 font-medium bg-slate-100/50 px-2.5 py-1 rounded-lg text-xs"
+                                                x-text="formatDate(tx.date)"></span>
+                                        </td>
+                                        <td class="py-4 px-4 text-slate-600 font-medium hidden md:table-cell">
+                                            <div class="flex items-center gap-2">
+                                                <div
+                                                    class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
+                                                    <i class="ph text-base" :class="tx.methodIcon"></i>
+                                                </div>
+                                                <span x-text="tx.method"></span>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-4 hidden lg:table-cell">
+                                            <div class="flex gap-1.5 flex-wrap">
+                                                <template x-for="tag in tx.tags">
+                                                    <span
+                                                        class="px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider"
+                                                        :class="getTagColor(tag)" x-text="'#'+tag"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-4 text-right">
+                                            <span class="font-bold text-base"
+                                                :class="tx.amount > 0 ? 'text-emerald-500' : 'text-slate-800'"
+                                                x-text="formatCurrency(tx.amount)"></span>
+                                        </td>
+                                    </tr>
+                                </template>
 
-                            <!-- Fallback for direct Jinja usage -->
+                                <!-- Fallback for direct Jinja usage -->
 
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div> <!-- End Home Dashboard Wrapper -->
+
+            <!-- Accounts View Wrapper -->
+            <div x-cloak x-show="activeTab === 'Account'"
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                class="flex flex-col gap-5 flex-1 pb-10">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+                    <template x-for="acc in myAccounts" :key="acc.name">
+                        <div
+                            class="glass-panel p-6 rounded-[2rem] flex flex-col group hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-transparent hover:border-indigo-300/50">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                        <i class="ph text-2xl"
+                                            :class="acc.type === 'Credit Card' ? 'ph-credit-card' : (acc.type === 'Cash' ? 'ph-wallet' : 'ph-bank')"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-slate-800 dark:text-white" x-text="acc.name"></h3>
+                                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400"
+                                            x-text="acc.type + ' ' + acc.mask"></p>
+                                    </div>
+                                </div>
+                                <button class="text-slate-400 hover:text-indigo-600"><i
+                                        class="ph ph-dots-three-vertical text-xl"></i></button>
+                            </div>
+                            <div class="mt-auto pt-4">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Available
+                                    Balance</p>
+                                <h2 class="text-3xl font-black text-slate-800 dark:text-slate-100"
+                                    x-text="formatCurrency(acc.balance)"></h2>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Add Account Card -->
+                    <div
+                        class="glass-panel p-6 rounded-[2rem] flex flex-col items-center justify-center min-h-[180px] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group transition-all duration-300 cursor-pointer">
+                        <div
+                            class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 flex items-center justify-center mb-3 transition-colors">
+                            <i class="ph ph-plus text-xl font-bold"></i>
+                        </div>
+                        <h3
+                            class="font-bold text-slate-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
+                            Link New Account</h3>
+                        <p class="text-xs text-slate-400 mt-1">Bank, Credit Card, or Cash</p>
+                    </div>
+
                 </div>
             </div>
 
@@ -632,6 +703,11 @@
                 isModalOpen: false,
                 isSubmitting: false,
                 activeTab: 'Home',
+                myAccounts: [
+                    { name: 'Chase Sapphire', type: 'Credit Card', balance: -1450.00, mask: '**** 1234' },
+                    { name: 'Bank of America', type: 'Checking', balance: 12450.00, mask: '**** 9876' },
+                    { name: 'Cash Wallet', type: 'Cash', balance: 350.00, mask: '' }
+                ],
                 menuItems: [
                     { name: 'Home', icon: 'ph-house' },
                     { name: 'Analytics', icon: 'ph-chart-pie-slice' },
