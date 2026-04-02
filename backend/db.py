@@ -6,15 +6,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "database" / "expenses.db"
 
 def get_connection():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     return sqlite3.connect(
-        "database/expenses.db",
+        DB_PATH,
         timeout=10,             
         check_same_thread=False  
     )
 
 # ✅ Initialize DB
 def init_db():
-    print("🔥 DB INIT CALLED")
+    print("DB INIT CALLED")
 
     conn = get_connection()
     cursor = conn.cursor()

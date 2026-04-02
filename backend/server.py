@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask import send_from_directory
 from pathlib import Path
 import json
@@ -8,14 +8,15 @@ from backend.db import init_db, get_connection
 
 init_db()  
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR.parent / "frontend"
+
+app = Flask(__name__, template_folder=str(FRONTEND_DIR))
 # Disable cache for static files in development
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app)
 
-BASE_DIR = Path(__file__).resolve().parent
-
-FRONTEND_DIR = BASE_DIR.parent / "frontend"
+DATA_FILE = BASE_DIR.parent / "database" / "Expense.txt"
 
 DATA_FILE = BASE_DIR.parent / "database" / "Expense.txt"
 
@@ -23,7 +24,7 @@ DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 @app.route("/")
 def serve_frontend():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    return render_template("dashboard.html")
 
 @app.route("/<path:path>")
 def serve_static(path):
