@@ -50,20 +50,30 @@ def save_expenses():
     try:
         for expense in data:
             print("➡️ Saving:", expense)
+            
+            amt = expense.get("amount")
+            acc_name = expense.get("accountName")
 
             cursor.execute("""
                 INSERT INTO expenses 
                 (amount, description, category, type, date, time, account)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
-                expense.get("amount"),
+                amt,
                 expense.get("description"),
                 expense.get("category"),
                 expense.get("type"),
                 expense.get("createdAt"),   # 🔥 fix field mapping
                 "",                         # time (optional)
-                expense.get("accountName")
+                acc_name
             ))
+            
+            if acc_name and amt is not None:
+                cursor.execute("""
+                    UPDATE accounts 
+                    SET balance = balance + ? 
+                    WHERE name = ?
+                """, (amt, acc_name))
 
         conn.commit()
         print("✅ Data saved")

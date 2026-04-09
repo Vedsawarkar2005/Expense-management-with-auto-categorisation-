@@ -938,6 +938,9 @@
                         });
                         if (!response.ok) throw new Error("Database serialization error on network hop.");
 
+                        // Refresh account balance
+                        await this.loadAccounts();
+
                         // Local State UI Update
                         const newTx = {
                             id: Date.now(),
