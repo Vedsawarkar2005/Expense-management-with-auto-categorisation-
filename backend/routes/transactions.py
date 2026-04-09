@@ -7,12 +7,12 @@ transactions_bp = Blueprint('transactions', __name__)
 @transactions_bp.route("/save-expenses", methods=["POST"])
 def save_expenses():
     data = request.get_json()
-    print("📥 Incoming Data:", data)
+    print("Incoming Data:", data)
     conn = get_connection()
     cursor = conn.cursor()
     try:
         for expense in data:
-            print("➡️ Saving:", expense)
+            print("Saving:", expense)
             amt = expense.get("amount")
             acc_name = expense.get("accountName")
             cursor.execute("""
@@ -35,10 +35,10 @@ def save_expenses():
                     WHERE name = ?
                 """, (amt, acc_name))
         conn.commit()
-        print("✅ Data saved")
+        print("Data saved")
         return jsonify({"ok": True})
     except Exception as e:
-        print("❌ ERROR:", e)
+        print("ERROR:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -95,7 +95,7 @@ def update_expense(expense_id):
         conn.commit()
         return jsonify({"ok": True})
     except Exception as e:
-        print("❌ ERROR:", e)
+        print("ERROR:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -117,7 +117,7 @@ def delete_expense(expense_id):
         conn.commit()
         return jsonify({"ok": True})
     except Exception as e:
-        print("❌ ERROR:", e)
+        print("ERROR:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -133,7 +133,7 @@ def clear_transactions():
         conn.commit()
         return jsonify({"ok": True})
     except Exception as e:
-        print("❌ ERROR:", e)
+        print("ERROR:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         conn.close()

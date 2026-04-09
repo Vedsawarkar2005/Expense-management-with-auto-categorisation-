@@ -16,11 +16,6 @@ app = Flask(__name__, template_folder=str(FRONTEND_DIR), static_folder=str(FRONT
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app)
 
-DATA_FILE = BASE_DIR.parent / "database" / "Expense.txt"
-
-DATA_FILE = BASE_DIR.parent / "database" / "Expense.txt"
-
-DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 @app.route("/")
 def serve_frontend():
