@@ -1,19 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker Dashboard</title>
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Alpine.js (CDN) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <!-- Chart.js (CDN) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script>
 tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -26,7 +10,76 @@ tailwind.config = {
             }
         }
     </script>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        /* Glassmorphism utilities */
+        .glass-panel {
+            background: var(--glass-bg, rgba(255, 255, 255, 0.65));
+            border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.4));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+        }
+
+        html.dark .glass-panel:not(.bg-gradient-to-br) {
+            --glass-bg: rgba(30, 41, 59, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            color: #f8fafc;
+        }
+
+        html.dark .glass-panel h1,
+        html.dark .glass-panel h2,
+        html.dark .glass-panel h3,
+        html.dark .glass-panel h4 {
+            color: #fff !important;
+        }
+
+        html.dark .glass-panel p,
+        html.dark .glass-panel span,
+        html.dark .glass-panel td,
+        html.dark .glass-panel label {
+            color: #cbd5e1;
+        }
+
+        /* Fix internal component backgrounds */
+        html.dark main .bg-white\/70,
+        html.dark main .bg-white\/60,
+        html.dark aside .bg-white\/60,
+        html.dark .bg-slate-100 {
+            background-color: rgba(15, 23, 42, 0.6) !important;
+            border-color: rgba(255, 255, 255, 0.05) !important;
+            color: #f8fafc !important;
+        }
+
+        /* Sidebar active tab */
+        html.dark aside a.bg-white {
+            background-color: rgba(99, 102, 241, 0.2) !important;
+            color: #818cf8 !important;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        /* Disable text selection on UI elements */
+        .no-select {
+            user-select: none;
+        }
+    </style>
 </head>
 
 <body x-data="dashboard()" :class="{ 'dark': isDark }"
@@ -1407,5 +1460,3 @@ tailwind.config = {
                 });
             }
         };
-</body>
-</html>
