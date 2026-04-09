@@ -1079,19 +1079,27 @@
                                 'food': 'Food & Dining',
                                 'groceries': 'Food & Dining',
                                 'transport': 'Transportation',
+                                'transportation': 'Transportation',
                                 'entertainment': 'Entertainment',
-                                'income': 'Salary',
-                                'salary': 'Salary'
+                                'income': 'Income',
+                                'salary': 'Salary',
+                                'housing': 'Housing',
+                                'healthcare': 'Healthcare'
                             };
 
-                            // Fallback mapping if exact matches are found
+                            // Assign mapped value, or intelligently capitalize fallback
                             if (mapping[categoryStr]) {
                                 this.txForm.category = mapping[categoryStr];
-                                if (categoryStr === 'income' || categoryStr === 'salary') {
-                                    this.txForm.type = 'income';
-                                } else {
-                                    this.txForm.type = 'expense';
-                                }
+                            } else if (data.category) {
+                                // Capitalize string if it is an unknown ML category (e.g., 'utilities' -> 'Utilities')
+                                this.txForm.category = data.category.charAt(0).toUpperCase() + data.category.slice(1);
+                            }
+
+                            // Dynamic Type Sync
+                            if (categoryStr === 'income' || categoryStr === 'salary') {
+                                this.txForm.type = 'income';
+                            } else if (data.category && data.category !== '') {
+                                this.txForm.type = 'expense';
                             }
                         })
                         .catch(err => console.error('Auto category failed:', err));
@@ -1163,7 +1171,6 @@
                     { name: 'Home', icon: 'ph-house' },
                     { name: 'Analytics', icon: 'ph-chart-pie-slice' },
                     { name: 'Transactions', icon: 'ph-receipt' },
-                    { name: 'Budget', icon: 'ph-target' },
                     { name: 'Account', icon: 'ph-user' },
                 ],
                 txForm: {
