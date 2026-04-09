@@ -430,6 +430,59 @@
                 </div>
             </div>
 
+            <!-- Analytics View Wrapper -->
+            <div x-cloak x-show="activeTab === 'Analytics'"
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                class="flex flex-col gap-6 flex-1 pb-10 w-full overflow-y-auto pr-2 scrollbar-hide">
+
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight mb-2">Analytics Overview
+                </h2>
+
+                <!-- Analytics Top Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
+                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
+                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Highest
+                            Expense</p>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-white" x-text="highestExpenseCategory()">
+                        </h3>
+                        <p class="text-[13px] font-semibold text-rose-500 mt-0.5"
+                            x-text="formatCurrency(highestExpenseAmount())"></p>
+                    </div>
+                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
+                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Avg
+                            Daily Spend</p>
+                        <h3 class="text-3xl font-black text-slate-800 dark:text-white"
+                            x-text="formatCurrency(averageDailySpend())"></h3>
+                    </div>
+                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
+                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Net
+                            Cash Flow</p>
+                        <h3 class="text-3xl font-black"
+                            :class="totalIncome - totalExpenses >= 0 ? 'text-emerald-500' : 'text-rose-500'"
+                            x-text="formatCurrency(totalIncome - totalExpenses)"></h3>
+                    </div>
+                </div>
+
+                <!-- Large Detail Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                    <div class="glass-panel p-7 rounded-[2rem] flex flex-col min-h-[350px]">
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight mb-4">Cash Flow
+                            Trends</h3>
+                        <div class="flex-1 relative w-full h-[250px]">
+                            <canvas id="largeCashFlowChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-7 rounded-[2rem] flex flex-col min-h-[350px]">
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight mb-4">Expense
+                            Breakdown</h3>
+                        <div class="flex-1 relative w-full h-[250px] flex justify-center">
+                            <canvas id="largeCategoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
 
         <!-- ==================== RIGHT PANEL ==================== -->
@@ -753,15 +806,19 @@
                     this.loadAllExpenses();
                 },
                 allTransactions: [],
+                allMappedTransactions: [],
+                searchQuery: '',
+                sortField: 'date',
+                sortAsc: false,
                 async loadAllExpenses() {
                     try {
                         const res = await fetch('/load-expenses');
                         const data = await res.json();
                         this.allTransactions = data;
 
-                        // Sync recent transactions
-                        const sorted = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
-                        this.recentTransactions = sorted.slice(0, 5).map(tx => ({
+                        // Sync mapped transactions
+                        const sorted = [...data].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+                        this.allMappedTransactions = sorted.map(tx => ({
                             id: tx.id,
                             merchant: tx.description,
                             category: tx.category,
@@ -775,9 +832,80 @@
                             iconBorder: tx.type === 'expense' ? 'border-slate-200' : 'border-emerald-100',
                             iconColor: tx.type === 'expense' ? 'text-slate-600' : 'text-emerald-600'
                         }));
+                        this.recentTransactions = this.allMappedTransactions.slice(0, 5);
+
+                        if (window.renderCharts) window.renderCharts(this.allTransactions);
+                    } catch (e) {
                     } catch (e) {
                         console.error('Failed to load expenses', e);
                     }
+                },
+                async clearAllTransactions() {
+                    if (!confirm("Are you sure you want to clear all transactions? Account balances will be reset to 0.")) return;
+                    try {
+                        const res = await fetch('/clear-transactions', { method: 'DELETE' });
+                        if (res.ok) {
+                            await this.loadAllExpenses();
+                            await this.loadAccounts();
+                        }
+                    } catch (e) { console.error('Failed to clear', e); }
+                },
+                filteredTransactions() {
+                    let results = this.allMappedTransactions;
+                    if (this.searchQuery) {
+                        const sq = this.searchQuery.toLowerCase();
+                        results = results.filter(tx =>
+                            tx.merchant.toLowerCase().includes(sq) ||
+                            tx.category.toLowerCase().includes(sq)
+                        );
+                    }
+
+                    results = [...results].sort((a, b) => {
+                        let va = a[this.sortField];
+                        let vb = b[this.sortField];
+                        if (this.sortField === 'date') {
+                            va = new Date(va).getTime();
+                            vb = new Date(vb).getTime();
+                        }
+                        if (va < vb) return this.sortAsc ? -1 : 1;
+                        if (va > vb) return this.sortAsc ? 1 : -1;
+                        return 0;
+                    });
+
+                    return results;
+                },
+                highestExpenseCategory() {
+                    const expenses = this.allTransactions.filter(t => t.type === 'expense');
+                    if (expenses.length === 0) return 'None';
+                    const categoryTotals = {};
+                    expenses.forEach(t => {
+                        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
+                    });
+                    let maxCat = 'None';
+                    let maxAmt = 0;
+                    for (const [cat, amt] of Object.entries(categoryTotals)) {
+                        if (amt > maxAmt) { maxAmt = amt; maxCat = cat; }
+                    }
+                    return maxCat;
+                },
+                highestExpenseAmount() {
+                    const expenses = this.allTransactions.filter(t => t.type === 'expense');
+                    if (expenses.length === 0) return 0;
+                    const categoryTotals = {};
+                    expenses.forEach(t => {
+                        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
+                    });
+                    return Math.max(...Object.values(categoryTotals)) || 0;
+                },
+                averageDailySpend() {
+                    const expenses = this.allTransactions.filter(t => t.type === 'expense');
+                    if (expenses.length === 0) return 0;
+                    const dates = expenses.map(t => new Date(t.date || t.createdAt).getTime()).filter(x => !isNaN(x));
+                    if (dates.length === 0) return this.totalExpenses;
+                    const maxDate = Math.max(...dates);
+                    const minDate = Math.min(...dates);
+                    const days = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
+                    return this.totalExpenses / days;
                 },
                 get totalBalance() {
                     return this.myAccounts.reduce((sum, acc) => sum + acc.balance, 0);
@@ -1011,109 +1139,107 @@
             }));
         });
 
-        // Initialize Chart.js Elements
-        document.addEventListener('DOMContentLoaded', () => {
-
-            // Global Chart Defaults for Modern Look
+        let chartsInstance = {};
+        window.renderCharts = function (transactions) {
             Chart.defaults.font.family = "'Inter', 'system-ui', 'sans-serif'";
-            Chart.defaults.color = '#64748b'; // slate-500
-            Chart.defaults.scale.grid.color = 'rgba(226, 232, 240, 0.6)'; // slate-200
+            Chart.defaults.color = '#64748b';
+            Chart.defaults.scale.grid.color = 'rgba(226, 232, 240, 0.6)';
 
-            // 1. Doughnut Chart: Categories
-            const ctxCat = document.getElementById('categoryChart').getContext('2d');
-            new Chart(ctxCat, {
+            const initChart = (id, config) => {
+                if (chartsInstance[id]) chartsInstance[id].destroy();
+                const canvas = document.getElementById(id);
+                if (!canvas) return;
+                chartsInstance[id] = new Chart(canvas.getContext('2d'), config);
+            };
+
+            const expenses = transactions.filter(t => t.type === 'expense');
+            const incomes = transactions.filter(t => t.type === 'income');
+
+            // 1. Categories Aggregation
+            const categorySums = {};
+            expenses.forEach(t => categorySums[t.category] = (categorySums[t.category] || 0) + Math.abs(t.amount));
+            const catLabels = Object.keys(categorySums).length ? Object.keys(categorySums) : ['No Data'];
+            const catData = Object.values(categorySums).length ? Object.values(categorySums) : [1];
+
+            const doughnutConfig = {
                 type: 'doughnut',
                 data: {
-                    labels: ['Food', 'Transport', 'Shop', 'Bills', 'Other'],
+                    labels: catLabels,
                     datasets: [{
-                        data: [35, 15, 20, 20, 10],
-                        backgroundColor: [
-                            '#6366f1', // indigo-500
-                            '#38bdf8', // sky-400
-                            '#a855f7', // purple-500
-                            '#f43f5e', // rose-500
-                            '#cbd5e1'  // slate-300
-                        ],
+                        data: catData,
+                        backgroundColor: ['#6366f1', '#38bdf8', '#a855f7', '#f43f5e', '#cbd5e1', '#fbbf24', '#10b981'],
                         borderWidth: 0,
                         hoverOffset: 6
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '80%',
+                    responsive: true, maintainAspectRatio: false, cutout: '80%',
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            titleColor: '#0f172a',
-                            bodyColor: '#334155',
-                            borderColor: '#e2e8f0',
-                            borderWidth: 1,
-                            padding: 12,
-                            boxPadding: 6,
-                            usePointStyle: true,
-                            callbacks: {
-                                label: (context) => ` ${context.label}: ${context.raw}%`
-                            }
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#0f172a', bodyColor: '#334155',
+                            borderColor: '#e2e8f0', borderWidth: 1, padding: 12, boxPadding: 6, usePointStyle: true,
+                            callbacks: { label: (c) => ` ${c.label}: $${c.raw}` }
                         }
                     }
                 }
+            };
+
+            // Render both sidebar and large analytics category charts
+            initChart('categoryChart', doughnutConfig);
+
+            const largeDoughnutConfig = JSON.parse(JSON.stringify(doughnutConfig));
+            largeDoughnutConfig.options.plugins.legend.display = true;
+            largeDoughnutConfig.options.plugins.legend.position = 'right';
+            initChart('largeCategoryChart', largeDoughnutConfig);
+
+            // 2. Monthly Analytics Aggregation
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const monthlyData = {};
+            const last6Months = [];
+
+            const d = new Date();
+            for (let i = 5; i >= 0; i--) {
+                let m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                let key = `${m.getFullYear()}-${m.getMonth()}`;
+                last6Months.push({ key, label: monthNames[m.getMonth()] });
+                monthlyData[key] = { inc: 0, exp: 0 };
+            }
+
+            transactions.forEach(t => {
+                let d2 = new Date(t.date || t.createdAt);
+                let key = `${d2.getFullYear()}-${d2.getMonth()}`;
+                if (monthlyData[key]) {
+                    if (t.type === 'income') monthlyData[key].inc += Math.abs(t.amount);
+                    else monthlyData[key].exp += Math.abs(t.amount);
+                }
             });
 
-            // 2. Bar Chart: Monthly Analytics
-            const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
-            new Chart(ctxMonthly, {
+            const barConfig = {
                 type: 'bar',
                 data: {
-                    labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+                    labels: last6Months.map(m => m.label),
                     datasets: [
-                        {
-                            label: 'Income',
-                            data: [4200, 4500, 4300, 4800, 5100, 3250],
-                            backgroundColor: '#10b981', // emerald-500
-                            borderRadius: 6,
-                            barPercentage: 0.5,
-                            categoryPercentage: 0.8
-                        },
-                        {
-                            label: 'Expenses',
-                            data: [3100, 2800, 3400, 2900, 3200, 1400],
-                            backgroundColor: '#6366f1', // indigo-500
-                            borderRadius: 6,
-                            barPercentage: 0.5,
-                            categoryPercentage: 0.8
-                        }
+                        { label: 'Income', data: last6Months.map(m => monthlyData[m.key].inc), backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.8 },
+                        { label: 'Expenses', data: last6Months.map(m => monthlyData[m.key].exp), backgroundColor: '#6366f1', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.8 }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom',
-                            labels: { usePointStyle: true, boxWidth: 6, padding: 20 }
-                        }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 6, padding: 20 } } },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            border: { display: false },
-                            ticks: { maxTicksLimit: 5, callback: (val) => '$' + val / 1000 + 'k' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            border: { display: false }
-                        }
+                        y: { beginAtZero: true, border: { display: false }, ticks: { maxTicksLimit: 5, callback: (v) => '$' + v } },
+                        x: { grid: { display: false }, border: { display: false } }
                     }
                 }
-            });
+            };
+
+            initChart('monthlyChart', barConfig);
+            initChart('largeCashFlowChart', barConfig);
 
             // 3. Mini Trend Lines for Summary Cards
             const commonSparklineOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { enabled: false } },
                 scales: { x: { display: false }, y: { display: false, beginAtZero: false } },
                 elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 4 } },
@@ -1127,41 +1253,26 @@
                 return gradient;
             };
 
-            const ctxIncome = document.getElementById('incomeTrendChart').getContext('2d');
-            new Chart(ctxIncome, {
-                type: 'line',
-                data: {
-                    labels: ['1', '2', '3', '4', '5', '6', '7'],
-                    datasets: [{
-                        data: [65, 59, 80, 81, 56, 55, 90],
-                        borderColor: '#059669', // emerald-600
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        backgroundColor: generateGradient(ctxIncome, 'rgba(16, 185, 129, 0.25)', 'rgba(16, 185, 129, 0)')
-                    }]
-                },
-                options: commonSparklineOptions
-            });
+            const incData = last6Months.map(m => monthlyData[m.key].inc);
+            const ctxInc = document.getElementById('incomeTrendChart');
+            if (ctxInc) {
+                initChart('incomeTrendChart', {
+                    type: 'line',
+                    data: { labels: ['1', '2', '3', '4', '5', '6'], datasets: [{ data: incData, borderColor: '#059669', borderWidth: 2, tension: 0.4, fill: true, backgroundColor: generateGradient(ctxInc.getContext('2d'), 'rgba(16, 185, 129, 0.25)', 'rgba(16, 185, 129, 0)') }] },
+                    options: commonSparklineOptions
+                });
+            }
 
-            const ctxExpense = document.getElementById('expenseTrendChart').getContext('2d');
-            new Chart(ctxExpense, {
-                type: 'line',
-                data: {
-                    labels: ['1', '2', '3', '4', '5', '6', '7'],
-                    datasets: [{
-                        data: [30, 50, 45, 75, 40, 60, 45],
-                        borderColor: '#e11d48', // rose-600
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        backgroundColor: generateGradient(ctxExpense, 'rgba(244, 63, 94, 0.25)', 'rgba(244, 63, 94, 0)')
-                    }]
-                },
-                options: commonSparklineOptions
-            });
-
-        });
+            const expData = last6Months.map(m => monthlyData[m.key].exp);
+            const ctxExp = document.getElementById('expenseTrendChart');
+            if (ctxExp) {
+                initChart('expenseTrendChart', {
+                    type: 'line',
+                    data: { labels: ['1', '2', '3', '4', '5', '6'], datasets: [{ data: expData, borderColor: '#e11d48', borderWidth: 2, tension: 0.4, fill: true, backgroundColor: generateGradient(ctxExp.getContext('2d'), 'rgba(244, 63, 94, 0.25)', 'rgba(244, 63, 94, 0)') }] },
+                    options: commonSparklineOptions
+                });
+            }
+        };
     </script>
 </body>
 

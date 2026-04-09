@@ -134,6 +134,22 @@ def predict_category_api():
         "category": category
     })
 
+# ✅ 3. DELETE ALL EXPENSES (CLEAR HISTORY)
+@app.route("/clear-transactions", methods=["DELETE"])
+def clear_transactions():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM expenses")
+        cursor.execute("UPDATE accounts SET balance = 0") # prevent desync
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print("❌ ERROR:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
 # ✅ 4. LOAD ACCOUNTS
 @app.route("/load-accounts", methods=["GET"])
 def load_accounts():
