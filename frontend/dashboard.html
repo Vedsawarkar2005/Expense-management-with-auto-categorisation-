@@ -220,9 +220,8 @@
                                 <p
                                     class="text-indigo-100 font-medium mb-1.5 opacity-90 text-sm uppercase tracking-wider">
                                     Monthly Balance</p>
-                                <!-- Jinja placeholder support -->
-                                <h3 class="text-4xl font-bold tracking-tight">{{ balance | default("$12,450.00", true)
-                                    }}
+                                <!-- Dynamic alpine support -->
+                                <h3 class="text-4xl font-bold tracking-tight" x-text="formatCurrency(totalBalance)">
                                 </h3>
                             </div>
                             <div
@@ -248,8 +247,7 @@
                                 <p
                                     class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
                                     Total Income</p>
-                                <h3 class="text-3xl font-bold text-slate-800">{{ income | default("$8,200.00", true) }}
-                                </h3>
+                                <h3 class="text-3xl font-bold text-slate-800" x-text="formatCurrency(totalIncome)"></h3>
                             </div>
                             <div
                                 class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">
@@ -270,8 +268,7 @@
                                 <p
                                     class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
                                     Total Expenses</p>
-                                <h3 class="text-3xl font-bold text-slate-800">{{ expenses | default("$3,450.00", true)
-                                    }}
+                                <h3 class="text-3xl font-bold text-slate-800" x-text="formatCurrency(totalExpenses)">
                                 </h3>
                             </div>
                             <div
@@ -753,6 +750,43 @@
                 init() {
                     if (this.isDark) document.documentElement.classList.add('dark');
                     this.loadAccounts();
+                    this.loadAllExpenses();
+                },
+                allTransactions: [],
+                async loadAllExpenses() {
+                    try {
+                        const res = await fetch('/load-expenses');
+                        const data = await res.json();
+                        this.allTransactions = data;
+
+                        // Sync recent transactions
+                        const sorted = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+                        this.recentTransactions = sorted.slice(0, 5).map(tx => ({
+                            id: tx.id,
+                            merchant: tx.description,
+                            category: tx.category,
+                            date: tx.date || tx.createdAt,
+                            amount: tx.type === 'expense' ? -Math.abs(tx.amount) : Math.abs(tx.amount),
+                            method: tx.account || 'Unknown',
+                            methodIcon: (this.myAccounts.find(a => a.name === tx.account)?.type === 'Credit Card') ? 'ph-credit-card' : (this.myAccounts.find(a => a.name === tx.account)?.type === 'Cash' ? 'ph-wallet' : 'ph-bank'),
+                            tags: [],
+                            icon: tx.type === 'expense' ? 'ph-storefront' : 'ph-briefcase',
+                            iconBg: tx.type === 'expense' ? 'bg-slate-100' : 'bg-emerald-50',
+                            iconBorder: tx.type === 'expense' ? 'border-slate-200' : 'border-emerald-100',
+                            iconColor: tx.type === 'expense' ? 'text-slate-600' : 'text-emerald-600'
+                        }));
+                    } catch (e) {
+                        console.error('Failed to load expenses', e);
+                    }
+                },
+                get totalBalance() {
+                    return this.myAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+                },
+                get totalIncome() {
+                    return this.allTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+                },
+                get totalExpenses() {
+                    return this.allTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
                 },
                 async loadAccounts() {
                     try {
@@ -938,8 +972,9 @@
                         });
                         if (!response.ok) throw new Error("Database serialization error on network hop.");
 
-                        // Refresh account balance
+                        // Refresh account balance and total expenses
                         await this.loadAccounts();
+                        await this.loadAllExpenses();
 
                         // Local State UI Update
                         const newTx = {
