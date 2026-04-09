@@ -620,7 +620,7 @@
                     <!-- Center literal -->
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
                         <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Spent</span>
-                        <span class="text-xl font-black text-slate-800">{{ expenses | default("$3,450", true) }}</span>
+                        <span class="text-xl font-black text-slate-800" x-text="formatCurrency(totalExpenses)"></span>
                     </div>
                 </div>
             </div>
@@ -651,14 +651,19 @@
                     <div class="flex justify-between items-end mb-2">
                         <div>
                             <span class="text-sm font-bold text-slate-800 block">Food & Dining</span>
-                            <span class="text-xs font-medium text-slate-400">75% used</span>
+                            <span class="text-xs font-medium"
+                                :class="getCategorySpend('Food & Dining') >= 600 ? 'text-rose-500' : 'text-slate-400'"
+                                x-text="getCategorySpend('Food & Dining') >= 600 ? 'Exceeded' : Math.round((getCategorySpend('Food & Dining') / 600) * 100) + '% used'"></span>
                         </div>
-                        <span class="text-xs font-bold text-slate-600">$450 / <span
-                                class="text-slate-400">$600</span></span>
+                        <span class="text-xs font-bold text-slate-600"><span
+                                x-text="formatCurrency(getCategorySpend('Food & Dining'))"></span> / <span
+                                class="text-slate-400">$600.00</span></span>
                     </div>
                     <div class="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full"
-                            style="width: 75%"></div>
+                        <div class="h-full rounded-full transition-all duration-500"
+                            :class="getCategorySpend('Food & Dining') >= 600 ? 'bg-gradient-to-r from-rose-400 to-rose-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'"
+                            :style="'width: ' + Math.min((getCategorySpend('Food & Dining') / 600) * 100, 100) + '%'">
+                        </div>
                     </div>
                 </div>
                 <!-- Budget Item -->
@@ -666,14 +671,18 @@
                     <div class="flex justify-between items-end mb-2">
                         <div>
                             <span class="text-sm font-bold text-slate-800 block">Shopping</span>
-                            <span class="text-xs font-medium text-rose-500">Exceeded</span>
+                            <span class="text-xs font-medium"
+                                :class="getCategorySpend('Shopping') >= 300 ? 'text-rose-500' : 'text-slate-400'"
+                                x-text="getCategorySpend('Shopping') >= 300 ? 'Exceeded' : Math.round((getCategorySpend('Shopping') / 300) * 100) + '% used'"></span>
                         </div>
-                        <span class="text-xs font-bold text-slate-600">$320 / <span
-                                class="text-slate-400">$300</span></span>
+                        <span class="text-xs font-bold text-slate-600"><span
+                                x-text="formatCurrency(getCategorySpend('Shopping'))"></span> / <span
+                                class="text-slate-400">$300.00</span></span>
                     </div>
                     <div class="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-rose-400 to-rose-500 rounded-full" style="width: 100%">
-                        </div>
+                        <div class="h-full rounded-full transition-all duration-500"
+                            :class="getCategorySpend('Shopping') >= 300 ? 'bg-gradient-to-r from-rose-400 to-rose-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'"
+                            :style="'width: ' + Math.min((getCategorySpend('Shopping') / 300) * 100, 100) + '%'"></div>
                     </div>
                 </div>
             </div>
@@ -989,6 +998,10 @@
                     });
 
                     return results;
+                },
+                getCategorySpend(category) {
+                    const expenses = this.allTransactions.filter(t => t.type === 'expense' && t.category === category);
+                    return expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
                 },
                 highestExpenseCategory() {
                     const expenses = this.allTransactions.filter(t => t.type === 'expense');
