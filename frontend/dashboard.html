@@ -558,10 +558,11 @@
 
                     <!-- Transaction Type Toggle -->
                     <div class="flex p-1 bg-slate-100 dark:bg-slate-900/50 rounded-xl w-full">
-                        <button type="button" @click="txForm.type = 'expense'"
+                        <button type="button"
+                            @click="txForm.type = 'expense'; if(txForm.category === 'Income') txForm.category = ''"
                             :class="txForm.type === 'expense' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
                             class="flex-1 py-2 text-sm font-bold rounded-lg transition-all duration-200">Expense</button>
-                        <button type="button" @click="txForm.type = 'income'"
+                        <button type="button" @click="txForm.type = 'income'; txForm.category = 'Income'"
                             :class="txForm.type === 'income' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
                             class="flex-1 py-2 text-sm font-bold rounded-lg transition-all duration-200">Income</button>
                     </div>
@@ -600,6 +601,7 @@
                                     <option>Entertainment</option>
                                     <option>Healthcare</option>
                                     <option>Salary</option>
+                                    <option>Income</option>
                                 </select>
                                 <i
                                     class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold"></i>
@@ -631,10 +633,9 @@
                             <div class="relative">
                                 <select name="method" x-model="txForm.method"
                                     class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 dark:text-slate-100 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
-                                    <option>Credit Card</option>
-                                    <option>Debit Card</option>
-                                    <option>Cash</option>
-                                    <option>Bank Transfer</option>
+                                    <template x-for="acc in myAccounts" :key="acc.name">
+                                        <option :value="acc.name" x-text="acc.name"></option>
+                                    </template>
                                 </select>
                                 <i
                                     class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold"></i>
@@ -751,6 +752,9 @@
                 isDark: localStorage.getItem('theme') === 'dark',
                 init() {
                     if (this.isDark) document.documentElement.classList.add('dark');
+                    if (this.myAccounts.length > 0) {
+                        this.txForm.method = this.myAccounts[0].name;
+                    }
                 },
                 toggleTheme() {
                     this.isDark = !this.isDark;
@@ -853,7 +857,7 @@
                     date: new Date().toISOString().split('T')[0],
                     category: '',
                     description: '',
-                    method: 'Credit Card',
+                    method: '',
                     tags: ''
                 },
                 recentTransactions: [
@@ -918,7 +922,7 @@
                             date: this.txForm.date,
                             amount: isExpense ? -amountVal : amountVal,
                             method: this.txForm.method,
-                            methodIcon: this.txForm.method.includes('Card') ? 'ph-credit-card' : 'ph-money',
+                            methodIcon: (this.myAccounts.find(a => a.name === this.txForm.method)?.type === 'Credit Card') ? 'ph-credit-card' : (this.myAccounts.find(a => a.name === this.txForm.method)?.type === 'Cash' ? 'ph-wallet' : 'ph-bank'),
                             tags: this.txForm.tags.split(',').map(t => t.trim()).filter(Boolean),
                             icon: isExpense ? 'ph-storefront' : 'ph-briefcase',
                             iconBg: isExpense ? 'bg-slate-100' : 'bg-emerald-50',
