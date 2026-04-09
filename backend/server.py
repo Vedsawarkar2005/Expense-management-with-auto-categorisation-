@@ -124,5 +124,76 @@ def predict_category_api():
         "category": category
     })
 
+# ✅ 4. LOAD ACCOUNTS
+@app.route("/load-accounts", methods=["GET"])
+def load_accounts():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM accounts")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    accounts = []
+    for row in rows:
+        accounts.append({
+            "id": row[0],
+            "name": row[1],
+            "type": row[2],
+            "balance": row[3],
+            "mask": row[4]
+        })
+    return jsonify(accounts)
+
+# ✅ 5. SAVE ACCOUNT
+@app.route("/save-account", methods=["POST"])
+def save_account():
+    data = request.get_json()
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO accounts (name, type, balance, mask)
+            VALUES (?, ?, ?, ?)
+        """, (data.get("name"), data.get("type"), data.get("balance"), data.get("mask")))
+        conn.commit()
+        return jsonify({"ok": True, "id": cursor.lastrowid})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+# ✅ 6. UPDATE ACCOUNT
+@app.route("/update-account/<int:account_id>", methods=["PUT"])
+def update_account(account_id):
+    data = request.get_json()
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE accounts 
+            SET name=?, type=?, balance=?, mask=?
+            WHERE id=?
+        """, (data.get("name"), data.get("type"), data.get("balance"), data.get("mask"), account_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+# ✅ 7. DELETE ACCOUNT
+@app.route("/delete-account/<int:account_id>", methods=["DELETE"])
+def delete_account(account_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM accounts WHERE id=?", (account_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
 if __name__ == "__main__":
     app.run(debug=True)

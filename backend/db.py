@@ -33,5 +33,24 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        type TEXT,
+        balance REAL,
+        mask TEXT
+    )
+    """)
+
+    cursor.execute("SELECT COUNT(*) FROM accounts")
+    if cursor.fetchone()[0] == 0:
+        seed_data = [
+            ('Chase Sapphire', 'Credit Card', -1450.00, '**** 1234'),
+            ('Bank of America', 'Checking', 12450.00, '**** 9876'),
+            ('Cash Wallet', 'Cash', 350.00, '')
+        ]
+        cursor.executemany("INSERT INTO accounts (name, type, balance, mask) VALUES (?, ?, ?, ?)", seed_data)
+
     conn.commit()
     conn.close()

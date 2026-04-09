@@ -752,8 +752,18 @@
                 isDark: localStorage.getItem('theme') === 'dark',
                 init() {
                     if (this.isDark) document.documentElement.classList.add('dark');
-                    if (this.myAccounts.length > 0) {
-                        this.txForm.method = this.myAccounts[0].name;
+                    this.loadAccounts();
+                },
+                async loadAccounts() {
+                    try {
+                        const res = await fetch('/load-accounts');
+                        const data = await res.json();
+                        this.myAccounts = data;
+                        if (this.myAccounts.length > 0 && !this.txForm.method) {
+                            this.txForm.method = this.myAccounts[0].name;
+                        }
+                    } catch (e) {
+                        console.error('Failed to load accounts:', e);
                     }
                 },
                 toggleTheme() {
@@ -815,7 +825,7 @@
                     }
                     this.isAccountModalOpen = true;
                 },
-                saveAccount() {
+                async saveAccount() {
                     const idx = this.accForm.index;
                     const accountObj = {
                         name: this.accForm.name,
@@ -823,27 +833,41 @@
                         balance: parseFloat(this.accForm.balance) || 0,
                         mask: this.accForm.mask || ''
                     };
-                    if (idx >= 0) {
-                        const updated = [...this.myAccounts];
-                        updated[idx] = accountObj;
-                        this.myAccounts = updated;
-                    } else {
-                        this.myAccounts = [...this.myAccounts, accountObj];
+                    try {
+                        if (idx >= 0) {
+                            const dbId = this.myAccounts[idx].id;
+                            await fetch(`/update-account/${dbId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(accountObj)
+                            });
+                        } else {
+                            await fetch('/save-account', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(accountObj)
+                            });
+                        }
+                        await this.loadAccounts();
+                        this.isAccountModalOpen = false;
+                    } catch (e) {
+                        console.error("Save account failed", e);
+                        alert("Error saving account.");
                     }
-                    this.isAccountModalOpen = false;
                 },
-                deleteAccount(index) {
+                async deleteAccount(index) {
                     if (confirm('Are you sure you want to delete this account?')) {
-                        const updated = [...this.myAccounts];
-                        updated.splice(index, 1);
-                        this.myAccounts = updated;
+                        try {
+                            const dbId = this.myAccounts[index].id;
+                            await fetch(`/delete-account/${dbId}`, { method: 'DELETE' });
+                            await this.loadAccounts();
+                        } catch (e) {
+                            console.error("Delete account failed", e);
+                            alert("Error deleting account.");
+                        }
                     }
                 },
-                myAccounts: [
-                    { name: 'Chase Sapphire', type: 'Credit Card', balance: -1450.00, mask: '**** 1234' },
-                    { name: 'Bank of America', type: 'Checking', balance: 12450.00, mask: '**** 9876' },
-                    { name: 'Cash Wallet', type: 'Cash', balance: 350.00, mask: '' }
-                ],
+                myAccounts: [],
                 menuItems: [
                     { name: 'Home', icon: 'ph-house' },
                     { name: 'Analytics', icon: 'ph-chart-pie-slice' },
