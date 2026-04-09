@@ -134,6 +134,80 @@ def predict_category_api():
         "category": category
     })
 
+# ✅ 2.5 UPDATE EXPENSE
+@app.route("/update-expense/<int:expense_id>", methods=["PUT"])
+def update_expense(expense_id):
+    data = request.get_json()
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Fetch old record
+        cursor.execute("SELECT amount, account FROM expenses WHERE id=?", (expense_id,))
+        old_row = cursor.fetchone()
+        if not old_row:
+            return jsonify({"ok": False, "error": "Expense not found"}), 404
+            
+        old_amt, old_acc = old_row[0], old_row[1]
+
+        # Read new data
+        amt = data.get("amount")
+        acc_name = data.get("accountName")
+        desc = data.get("description")
+        cat = data.get("category")
+        typ = data.get("type")
+        dt = data.get("createdAt")
+
+        # Revert old balance
+        if old_acc and old_amt is not None:
+            cursor.execute("UPDATE accounts SET balance = balance - ? WHERE name = ?", (old_amt, old_acc))
+
+        # Apply new balance
+        if acc_name and amt is not None:
+            cursor.execute("UPDATE accounts SET balance = balance + ? WHERE name = ?", (amt, acc_name))
+
+        # Update expense record
+        cursor.execute("""
+            UPDATE expenses 
+            SET amount=?, description=?, category=?, type=?, date=?, account=?
+            WHERE id=?
+        """, (amt, desc, cat, typ, dt, acc_name, expense_id))
+
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print("❌ ERROR:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+# ✅ 2.6 DELETE EXPENSE
+@app.route("/delete-expense/<int:expense_id>", methods=["DELETE"])
+def delete_expense(expense_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT amount, account FROM expenses WHERE id=?", (expense_id,))
+        old_row = cursor.fetchone()
+        if not old_row:
+            return jsonify({"ok": False, "error": "Expense not found"}), 404
+            
+        old_amt, old_acc = old_row[0], old_row[1]
+
+        # Revert old balance
+        if old_acc and old_amt is not None:
+            cursor.execute("UPDATE accounts SET balance = balance - ? WHERE name = ?", (old_amt, old_acc))
+
+        cursor.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
+        
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print("❌ ERROR:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
 # ✅ 3. DELETE ALL EXPENSES (CLEAR HISTORY)
 @app.route("/clear-transactions", methods=["DELETE"])
 def clear_transactions():

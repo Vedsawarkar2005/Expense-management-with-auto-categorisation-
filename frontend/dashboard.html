@@ -537,6 +537,7 @@
                                         Amount <i class="ph ml-1 text-sm group-hover:opacity-100 transition-opacity"
                                             :class="sortField === 'amount' ? (sortAsc ? 'ph-caret-up text-indigo-600' : 'ph-caret-down text-indigo-600') : 'ph-caret-up opacity-0'"></i>
                                     </th>
+                                    <th class="py-4 px-6 font-semibold text-center whitespace-nowrap">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 w-full relative">
@@ -574,6 +575,20 @@
                                                 :class="tx.amount > 0 ? 'text-emerald-500' : 'text-slate-800 dark:text-white'"
                                                 x-text="(tx.amount > 0 ? '+' : '') + formatCurrency(Math.abs(tx.amount))">
                                             </p>
+                                        </td>
+                                        <td class="py-4 px-6 text-center whitespace-nowrap">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button @click.prevent="openTransactionModal(tx)"
+                                                    class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+                                                    title="Edit Transaction">
+                                                    <i class="ph ph-pencil-simple font-bold text-lg"></i>
+                                                </button>
+                                                <button @click.prevent="deleteTransaction(tx.id)"
+                                                    class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+                                                    title="Delete Transaction">
+                                                    <i class="ph ph-trash font-bold text-lg"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </template>
@@ -689,7 +704,7 @@
         </aside>
 
         <!-- ==================== FLOATING ACTION BUTTON ==================== -->
-        <button @click="isModalOpen = true"
+        <button @click="openTransactionModal()"
             class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-[1.25rem] shadow-lg shadow-indigo-300 flex items-center justify-center hover:-translate-y-1 hover:shadow-2xl hover:scale-105 transition-all duration-300 z-40 group border border-white/20">
             <i class="ph ph-plus text-3xl group-hover:rotate-90 transition-transform duration-300"></i>
         </button>
@@ -721,7 +736,8 @@
                             class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
                             <i class="ph ph-receipt text-xl"></i>
                         </div>
-                        <h3 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">Add Transaction
+                        <h3 class="text-xl font-black text-slate-800 dark:text-white tracking-tight"
+                            x-text="txForm.id ? 'Edit Transaction' : 'Add Transaction'">
                         </h3>
                     </div>
                     <button type="button" @click="isModalOpen = false"
@@ -1174,6 +1190,7 @@
                     { name: 'Account', icon: 'ph-user' },
                 ],
                 txForm: {
+                    id: null,
                     type: 'expense',
                     amount: '',
                     date: new Date().toISOString().split('T')[0],
@@ -1181,6 +1198,46 @@
                     description: '',
                     method: '',
                     tags: ''
+                },
+                openTransactionModal(tx = null) {
+                    if (tx) {
+                        this.txForm = {
+                            id: tx.id,
+                            type: tx.amount < 0 ? 'expense' : 'income',
+                            amount: Math.abs(tx.amount),
+                            date: tx.date || new Date().toISOString().split('T')[0],
+                            category: tx.category || '',
+                            description: tx.merchant || '',
+                            method: tx.method || '',
+                            tags: ''
+                        };
+                    } else {
+                        this.txForm = {
+                            id: null,
+                            type: 'expense',
+                            amount: '',
+                            date: new Date().toISOString().split('T')[0],
+                            category: '',
+                            description: '',
+                            method: '',
+                            tags: ''
+                        };
+                    }
+                    this.isModalOpen = true;
+                },
+                async deleteTransaction(txId) {
+                    if (confirm('Are you sure you want to delete this transaction?')) {
+                        try {
+                            const response = await fetch(`/delete-expense/${txId}`, { method: 'DELETE' });
+                            if (response.ok) {
+                                await this.loadAccounts();
+                                await this.loadAllExpenses();
+                            }
+                        } catch (e) {
+                            console.error('Delete error', e);
+                            alert("Failed to delete transaction.");
+                        }
+                    }
                 },
                 recentTransactions: [
                     { id: 1, merchant: 'Netflix Subscription', category: 'Entertainment', date: '2026-09-10', amount: -15.99, method: 'Credit Card', methodIcon: 'ph-credit-card', tags: ['subscription', 'home'], icon: 'ph-monitor-play', iconBg: 'bg-rose-50', iconBorder: 'border-rose-100', iconColor: 'text-rose-600' },
@@ -1220,19 +1277,29 @@
                         const amountVal = parseFloat(this.txForm.amount);
 
                         // Backend Integration: Persist to SQLite
-                        const payload = [{
+                        const payload = {
                             amount: isExpense ? -amountVal : amountVal,
                             description: this.txForm.description,
                             category: this.txForm.category,
                             type: this.txForm.type,
                             createdAt: this.txForm.date,
                             accountName: this.txForm.method
-                        }];
+                        };
 
-                        const response = await fetch('/save-expenses', {
-                            method: 'POST',
+                        let requestUrl = '/save-expenses';
+                        let requestMethod = 'POST';
+                        let requestBody = [payload];
+
+                        if (this.txForm.id) {
+                            requestUrl = `/update-expense/${this.txForm.id}`;
+                            requestMethod = 'PUT';
+                            requestBody = payload;
+                        }
+
+                        const response = await fetch(requestUrl, {
+                            method: requestMethod,
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
+                            body: JSON.stringify(requestBody)
                         });
                         if (!response.ok) throw new Error("Database serialization error on network hop.");
 
@@ -1260,6 +1327,7 @@
                         if (this.recentTransactions.length > 5) this.recentTransactions.pop();
 
                         // Reset Form
+                        this.txForm.id = null;
                         this.txForm.amount = '';
                         this.txForm.description = '';
                         this.txForm.tags = '';
