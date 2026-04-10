@@ -19,14 +19,20 @@ def clean_text(text):
 def keyword_rule(text):
     text = text.lower()
 
-    if any(word in text for word in ["dinner", "lunch", "pizza", "food", "restaurant"]):
+    if any(word in text for word in ["dinner", "lunch", "pizza", "food", "restaurant", "swiggy", "zomato", "mcdonalds", "kfc", "cafe"]):
         return "food"
-    if any(word in text for word in ["movie", "netflix", "game"]):
+    if any(word in text for word in ["movie", "netflix", "game", "spotify", "prime", "cinema", "theatre"]):
         return "entertainment"
-    if any(word in text for word in ["uber", "taxi", "fuel", "petrol"]):
+    if any(word in text for word in ["uber", "taxi", "fuel", "petrol", "shell", "hp", "flight", "train", "bus"]):
         return "transport"
-    if any(word in text for word in ["grocery", "milk", "vegetables"]):
+    if any(word in text for word in ["grocery", "milk", "vegetables", "fruits", "supermarket", "dmart", "reliance"]):
         return "groceries"
+    if any(word in text for word in ["amazon", "flipkart", "myntra", "shopping", "clothes", "shoes", "mall"]):
+        return "shopping"
+    if any(word in text for word in ["internet", "wifi", "phone", "recharge", "electricity", "bill", "water"]):
+        return "utilities"
+    if any(word in text for word in ["medicine", "doctor", "pharmacy", "hospital", "clinic", "health"]):
+        return "medicine"
 
     return None
     
@@ -39,7 +45,7 @@ y = data["category"]
 vectorizer = TfidfVectorizer(ngram_range=(1, 3), sublinear_tf=True, analyzer='char_wb')
 X_vec = vectorizer.fit_transform(X)
 
-model = LinearSVC()
+model = LinearSVC(class_weight='balanced')
 model.fit(X_vec, y)
 
 def detect_income(text):
