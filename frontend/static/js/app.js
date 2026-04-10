@@ -1,1462 +1,519 @@
-tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        glass: 'rgba(255, 255, 255, 0.7)',
-                        glassBorder: 'rgba(255, 255, 255, 0.3)',
-                    }
-                }
+document.addEventListener('alpine:init', () => {
+    Alpine.data('dashboard', () => ({
+        isDark: localStorage.getItem('theme') === 'dark',
+        init() {
+            if (this.isDark) document.documentElement.classList.add('dark');
+            this.loadAccounts();
+            this.loadAllExpenses();
+        },
+        allTransactions: [],
+        allMappedTransactions: [],
+        searchQuery: '',
+        sortField: 'date',
+        sortAsc: false,
+        async loadAllExpenses() {
+            try {
+                const res = await fetch('/load-expenses');
+                const data = await res.json();
+                this.allTransactions = data;
+
+                // Sync mapped transactions
+                const sorted = [...data].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+                this.allMappedTransactions = sorted.map(tx => ({
+                    id: tx.id,
+                    merchant: tx.description,
+                    category: tx.category,
+                    date: tx.date || tx.createdAt,
+                    amount: tx.type === 'expense' ? -Math.abs(tx.amount) : Math.abs(tx.amount),
+                    method: tx.account || 'Unknown',
+                    methodIcon: (this.myAccounts.find(a => a.name === tx.account)?.type === 'Credit Card') ? 'ph-credit-card' : (this.myAccounts.find(a => a.name === tx.account)?.type === 'Cash' ? 'ph-wallet' : 'ph-bank'),
+                    tags: [],
+                    icon: tx.type === 'expense' ? 'ph-storefront' : 'ph-briefcase',
+                    iconBg: tx.type === 'expense' ? 'bg-slate-100' : 'bg-emerald-50',
+                    iconBorder: tx.type === 'expense' ? 'border-slate-200' : 'border-emerald-100',
+                    iconColor: tx.type === 'expense' ? 'text-slate-600' : 'text-emerald-600'
+                }));
+                this.recentTransactions = this.allMappedTransactions.slice(0, 5);
+
+                if (window.renderCharts) window.renderCharts(this.allTransactions);
+            } catch (e) {
+                console.error('Failed to load expenses', e);
             }
-        }
-    </script>
-    <style>
-        /* Glassmorphism utilities */
-        .glass-panel {
-            background: var(--glass-bg, rgba(255, 255, 255, 0.65));
-            border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.4));
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
-        }
-
-        html.dark .glass-panel:not(.bg-gradient-to-br) {
-            --glass-bg: rgba(30, 41, 59, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            color: #f8fafc;
-        }
-
-        html.dark .glass-panel h1,
-        html.dark .glass-panel h2,
-        html.dark .glass-panel h3,
-        html.dark .glass-panel h4 {
-            color: #fff !important;
-        }
-
-        html.dark .glass-panel p,
-        html.dark .glass-panel span,
-        html.dark .glass-panel td,
-        html.dark .glass-panel label {
-            color: #cbd5e1;
-        }
-
-        /* Fix internal component backgrounds */
-        html.dark main .bg-white\/70,
-        html.dark main .bg-white\/60,
-        html.dark aside .bg-white\/60,
-        html.dark .bg-slate-100 {
-            background-color: rgba(15, 23, 42, 0.6) !important;
-            border-color: rgba(255, 255, 255, 0.05) !important;
-            color: #f8fafc !important;
-        }
-
-        /* Sidebar active tab */
-        html.dark aside a.bg-white {
-            background-color: rgba(99, 102, 241, 0.2) !important;
-            color: #818cf8 !important;
-        }
-
-        [x-cloak] {
-            display: none !important;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
-
-        /* Disable text selection on UI elements */
-        .no-select {
-            user-select: none;
-        }
-    </style>
-</head>
-
-<body x-data="dashboard()" :class="{ 'dark': isDark }"
-    class="bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 min-h-screen text-slate-800 font-sans antialiased overflow-hidden selection:bg-indigo-200 transition-colors duration-500">
-
-    <!-- App Container -->
-    <div class="flex h-screen p-3 md:p-5 gap-5 max-w-[1700px] mx-auto text-slate-800 dark:text-slate-100">
-
-        <!-- ==================== LEFT SIDEBAR ==================== -->
-        <aside
-            class="glass-panel w-64 rounded-[2rem] hidden lg:flex flex-col p-6 flex-shrink-0 transition-all duration-300 relative z-20">
-            <!-- Brand -->
-            <div class="flex items-center gap-3 mb-10 pl-2">
-                <div
-                    class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                    <i class="ph ph-wallet-stroke text-2xl"></i>
-                </div>
-                <h1
-                    class="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-purple-700">
-                    Trackify</h1>
-            </div>
-
-            <!-- Navigation -->
-            <nav class="flex-1 space-y-2.5">
-                <template x-for="item in menuItems" :key="item.name">
-                    <a href="#"
-                        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden"
-                        :class="activeTab === item.name ? 'bg-white shadow-sm text-indigo-700 font-semibold' : 'text-slate-500 hover:bg-white/60 hover:text-slate-800 font-medium'"
-                        @click.prevent="activeTab = item.name">
-                        <i
-                            :class="['ph text-2xl group-hover:scale-110 transition-transform duration-300', item.icon, activeTab === item.name ? 'ph-fill text-indigo-600' : '']"></i>
-                        <span x-text="item.name"></span>
-
-                        <!-- Active indicator -->
-                        <div x-show="activeTab === item.name"
-                            class="absolute left-0 w-1.5 h-6 bg-indigo-600 rounded-r-full top-1/2 -translate-y-1/2"
-                            x-transition></div>
-                    </a>
-                </template>
-            </nav>
-
-            <!-- User/Logout -->
-            <div class="mt-auto pt-6 border-t border-slate-200/50">
-                <a href="#"
-                    class="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all group font-medium">
-                    <i class="ph ph-sign-out text-2xl group-hover:translate-x-1 transition-transform"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </aside>
-
-        <!-- ==================== MAIN DASHBOARD ==================== -->
-        <main
-            class="flex-1 flex flex-col gap-5 overflow-y-auto pr-2 rounded-[2rem] pb-24 lg:pb-0 relative scrollbar-hide z-10 w-full">
-
-            <!-- Header -->
-            <header class="glass-panel rounded-3xl px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight"
-                        x-text="activeTab === 'Home' ? 'Expenses Tracker' : activeTab + ' Management'">Expenses Tracker
-                    </h2>
-                    <p class="text-slate-500 text-sm font-medium mt-0.5"
-                        x-text="activeTab === 'Home' ? 'Manage your daily finances' : 'Manage your connected accounts & wallets'">
-                        Manage your daily finances</p>
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <!-- Month Selector -->
-                    <div
-                        class="bg-white/70 px-4 py-2.5 rounded-[1.25rem] border border-white shadow-sm flex items-center gap-2 cursor-pointer hover:bg-white transition-all group">
-                        <i class="ph ph-calendar-blank text-indigo-600 text-lg"></i>
-                        <select
-                            class="bg-transparent border-none outline-none font-semibold text-slate-700 cursor-pointer text-sm">
-                            <option>September 2026</option>
-                            <option>August 2026</option>
-                            <option>July 2026</option>
-                        </select>
-                    </div>
-
-                    <!-- Notification -->
-                    <button
-                        class="w-11 h-11 rounded-full bg-white/70 hover:bg-white flex items-center justify-center border border-white shadow-sm text-slate-600 transition-all relative">
-                        <i class="ph ph-bell text-xl"></i>
-                        <span
-                            class="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-                    </button>
-
-                    <!-- Theme Toggle -->
-                    <button @click="toggleTheme()"
-                        class="w-11 h-11 rounded-full bg-white/70 hover:bg-white flex items-center justify-center border border-white shadow-sm text-slate-600 transition-all">
-                        <i class="ph text-xl transition-all" :class="isDark ? 'ph-sun' : 'ph-moon'"></i>
-                    </button>
-
-                    <!-- Mobile Menu -->
-                    <button
-                        class="lg:hidden w-11 h-11 rounded-full bg-white/70 hover:bg-white flex items-center justify-center border border-white shadow-sm text-slate-600 transition-all">
-                        <i class="ph ph-list text-xl"></i>
-                    </button>
-                </div>
-            </header>
-
-            <!-- Dashboard Content Wrapper (Home Default) -->
-            <div x-show="activeTab === 'Home'" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                class="flex flex-col gap-5 flex-1">
-                <!-- Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-
-                    <!-- Total Balance -->
-                    <div
-                        class="glass-panel p-7 rounded-[2rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white relative overflow-hidden group shadow-lg shadow-indigo-200">
-                        <!-- Decorative Elements -->
-                        <div
-                            class="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700">
-                        </div>
-                        <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-purple-400/20 rounded-full blur-2xl">
-                        </div>
-
-                        <div class="flex justify-between items-start relative z-10 mb-6">
-                            <div>
-                                <p
-                                    class="text-indigo-100 font-medium mb-1.5 opacity-90 text-sm uppercase tracking-wider">
-                                    Monthly Balance</p>
-                                <!-- Dynamic alpine support -->
-                                <h3 class="text-4xl font-bold tracking-tight" x-text="formatCurrency(totalBalance)">
-                                </h3>
-                            </div>
-                            <div
-                                class="p-3 bg-white/20 rounded-[1.25rem] backdrop-blur-md border border-white/20 shadow-inner">
-                                <i class="ph ph-wallet text-2xl text-white"></i>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between relative z-10">
-                            <div
-                                class="flex items-center gap-2 text-xs font-semibold bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-md">
-                                <i class="ph ph-trend-up text-emerald-300"></i>
-                                <span class="text-white">+2.5% vs last month</span>
-                            </div>
-                            <div class="text-indigo-200 text-sm font-medium">Valid Thru 12/28</div>
-                        </div>
-                    </div>
-
-                    <!-- Total Income -->
-                    <div
-                        class="glass-panel p-6 rounded-[2rem] flex flex-col justify-between group hover:bg-white/80 transition-colors duration-300">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <p
-                                    class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
-                                    Total Income</p>
-                                <h3 class="text-3xl font-bold text-slate-800" x-text="formatCurrency(totalIncome)"></h3>
-                            </div>
-                            <div
-                                class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-100">
-                                <i class="ph ph-arrow-down-left text-2xl"></i>
-                            </div>
-                        </div>
-                        <!-- Sparkline Chart -->
-                        <div class="h-16 w-full -mb-2">
-                            <canvas id="incomeTrendChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Total Expenses -->
-                    <div
-                        class="glass-panel p-6 rounded-[2rem] flex flex-col justify-between group hover:bg-white/80 transition-colors duration-300 md:col-span-2 xl:col-span-1">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <p
-                                    class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">
-                                    Total Expenses</p>
-                                <h3 class="text-3xl font-bold text-slate-800" x-text="formatCurrency(totalExpenses)">
-                                </h3>
-                            </div>
-                            <div
-                                class="w-12 h-12 rounded-[1.25rem] bg-gradient-to-br from-rose-100 to-rose-50 flex items-center justify-center text-rose-600 shadow-sm border border-rose-100">
-                                <i class="ph ph-arrow-up-right text-2xl"></i>
-                            </div>
-                        </div>
-                        <!-- Sparkline Chart -->
-                        <div class="h-16 w-full -mb-2">
-                            <canvas id="expenseTrendChart"></canvas>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Recent Transactions Table -->
-                <div class="glass-panel rounded-[2rem] p-7 flex flex-col flex-1 min-h-[400px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold text-slate-800 tracking-tight">Recent Transactions</h3>
-                        <div class="flex gap-2">
-                            <button
-                                class="p-2 border border-slate-200 text-slate-500 rounded-xl hover:bg-white hover:text-indigo-600 transition-colors"><i
-                                    class="ph ph-funnel"></i></button>
-                            <a href="#"
-                                class="px-4 py-2 bg-white text-sm font-semibold rounded-xl text-indigo-600 hover:bg-indigo-50 hover:shadow-sm border border-slate-100 transition-all">View
-                                All</a>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto pb-4">
-                        <table class="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
-                            <thead>
-                                <tr
-                                    class="text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200/60">
-                                    <th class="pb-3 px-4 font-semibold">Transaction Description</th>
-                                    <th class="pb-3 px-4 font-semibold hidden sm:table-cell">Date</th>
-                                    <th class="pb-3 px-4 font-semibold hidden md:table-cell">Method</th>
-                                    <th class="pb-3 px-4 font-semibold hidden lg:table-cell">Tags</th>
-                                    <th class="pb-3 px-4 font-semibold text-right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm">
-                                <template x-for="tx in recentTransactions" :key="tx.id">
-                                    <tr
-                                        class="group hover:bg-white/60 transition-colors border-b border-slate-100/50 last:border-0">
-                                        <td class="py-4 px-4 flex items-center gap-4">
-                                            <div class="w-12 h-12 rounded-[1.1rem] flex items-center justify-center text-xl shadow-sm border"
-                                                :class="[tx.iconBg, tx.iconBorder]">
-                                                <i :class="[tx.icon, tx.iconColor]"></i>
-                                            </div>
-                                            <div>
-                                                <p class="font-bold text-slate-800 text-[15px]" x-text="tx.merchant">
-                                                </p>
-                                                <p class="text-xs font-medium text-slate-500 mt-0.5"
-                                                    x-text="tx.category">
-                                                </p>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 px-4 hidden sm:table-cell">
-                                            <span
-                                                class="text-slate-600 font-medium bg-slate-100/50 px-2.5 py-1 rounded-lg text-xs"
-                                                x-text="formatDate(tx.date)"></span>
-                                        </td>
-                                        <td class="py-4 px-4 text-slate-600 font-medium hidden md:table-cell">
-                                            <div class="flex items-center gap-2">
-                                                <div
-                                                    class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                                                    <i class="ph text-base" :class="tx.methodIcon"></i>
-                                                </div>
-                                                <span x-text="tx.method"></span>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 px-4 hidden lg:table-cell">
-                                            <div class="flex gap-1.5 flex-wrap">
-                                                <template x-for="tag in tx.tags">
-                                                    <span
-                                                        class="px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider"
-                                                        :class="getTagColor(tag)" x-text="'#'+tag"></span>
-                                                </template>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 px-4 text-right">
-                                            <span class="font-bold text-base"
-                                                :class="tx.amount > 0 ? 'text-emerald-500' : 'text-slate-800'"
-                                                x-text="formatCurrency(tx.amount)"></span>
-                                        </td>
-                                    </tr>
-                                </template>
-
-                                <!-- Fallback for direct Jinja usage -->
-
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div> <!-- End Home Dashboard Wrapper -->
-
-            <!-- Accounts View Wrapper -->
-            <div x-cloak x-show="activeTab === 'Account'"
-                x-transition:enter="transition ease-out duration-300 transform"
-                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-                class="flex flex-col gap-5 flex-1 pb-10">
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-
-                    <template x-for="(acc, index) in myAccounts" :key="acc.name + index">
-                        <div
-                            class="glass-panel p-6 rounded-[2rem] flex flex-col group hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-transparent hover:border-indigo-300/50">
-                            <div class="flex justify-between items-start mb-6">
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                        <i class="ph text-2xl"
-                                            :class="acc.type === 'Credit Card' ? 'ph-credit-card' : (acc.type === 'Cash' ? 'ph-wallet' : 'ph-bank')"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-bold text-slate-800 dark:text-white" x-text="acc.name"></h3>
-                                        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400"
-                                            x-text="acc.type + ' ' + acc.mask"></p>
-                                    </div>
-                                </div>
-                                <div class="relative" x-data="{ openOptions: false }">
-                                    <button @click.stop="openOptions = !openOptions"
-                                        class="text-slate-400 hover:text-indigo-600"><i
-                                            class="ph ph-dots-three-vertical text-xl"></i></button>
-                                    <div x-show="openOptions" @click.away="openOptions = false" x-transition
-                                        class="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 z-50 overflow-hidden divide-y divide-slate-100 dark:divide-slate-700/50">
-                                        <button @click.stop="openAccountModal(index); openOptions = false"
-                                            class="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center gap-2"><i
-                                                class="ph ph-pencil-simple"></i> Edit</button>
-                                        <button @click.stop="deleteAccount(index); openOptions = false"
-                                            class="w-full text-left px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors flex items-center gap-2"><i
-                                                class="ph ph-trash"></i> Delete</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-auto pt-4">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Available
-                                    Balance</p>
-                                <h2 class="text-3xl font-black text-slate-800 dark:text-slate-100"
-                                    x-text="formatCurrency(acc.balance)"></h2>
-                            </div>
-                        </div>
-                    </template>
-
-                    <!-- Add Account Card -->
-                    <div @click="openAccountModal()"
-                        class="glass-panel p-6 rounded-[2rem] flex flex-col items-center justify-center min-h-[180px] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 group transition-all duration-300 cursor-pointer">
-                        <div
-                            class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 flex items-center justify-center mb-3 transition-colors">
-                            <i class="ph ph-plus text-xl font-bold"></i>
-                        </div>
-                        <h3
-                            class="font-bold text-slate-600 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-300">
-                            Link New Account</h3>
-                        <p class="text-xs text-slate-400 mt-1">Bank, Credit Card, or Cash</p>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Analytics View Wrapper -->
-            <div x-cloak x-show="activeTab === 'Analytics'"
-                x-transition:enter="transition ease-out duration-300 transform"
-                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-                class="flex flex-col gap-6 flex-1 pb-10 w-full overflow-y-auto pr-2 scrollbar-hide">
-
-                <h2 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight mb-2">Analytics Overview
-                </h2>
-
-                <!-- Analytics Top Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
-                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
-                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Highest
-                            Expense</p>
-                        <h3 class="text-2xl font-bold text-slate-800 dark:text-white" x-text="highestExpenseCategory()">
-                        </h3>
-                        <p class="text-[13px] font-semibold text-rose-500 mt-0.5"
-                            x-text="formatCurrency(highestExpenseAmount())"></p>
-                    </div>
-                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
-                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Avg
-                            Daily Spend</p>
-                        <h3 class="text-3xl font-black text-slate-800 dark:text-white"
-                            x-text="formatCurrency(averageDailySpend())"></h3>
-                    </div>
-                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
-                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Net
-                            Cash Flow</p>
-                        <h3 class="text-3xl font-black"
-                            :class="totalIncome - totalExpenses >= 0 ? 'text-emerald-500' : 'text-rose-500'"
-                            x-text="formatCurrency(totalIncome - totalExpenses)"></h3>
-                    </div>
-                </div>
-
-                <!-- Large Detail Charts -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-                    <div class="glass-panel p-7 rounded-[2rem] flex flex-col min-h-[350px]">
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight mb-4">Cash Flow
-                            Trends</h3>
-                        <div class="flex-1 relative w-full h-[250px]">
-                            <canvas id="largeCashFlowChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="glass-panel p-7 rounded-[2rem] flex flex-col min-h-[350px]">
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight mb-4">Expense
-                            Breakdown</h3>
-                        <div class="flex-1 relative w-full h-[250px] flex justify-center">
-                            <canvas id="largeCategoryChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Transactions View Wrapper -->
-            <div x-cloak x-show="activeTab === 'Transactions'"
-                x-transition:enter="transition ease-out duration-300 transform"
-                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
-                class="flex flex-col gap-6 flex-1 pb-10 w-full overflow-hidden">
-
-                <div class="flex justify-between items-end mb-2">
-                    <div>
-                        <h2 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">All
-                            Transactions</h2>
-                        <button @click="clearAllTransactions()"
-                            class="mt-1 text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1 transition-colors">
-                            <i class="ph ph-trash"></i> Clear All History
-                        </button>
-                    </div>
-
-                    <!-- Search & Filter -->
-                    <div class="relative w-full max-w-xs ml-4">
-                        <i
-                            class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                        <input type="text" x-model="searchQuery" placeholder="Search by description or category..."
-                            class="w-full bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-200 dark:border-slate-700/80 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-800 dark:text-slate-200 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-sm">
-                    </div>
-                </div>
-
-                <!-- Transactions Data Table -->
-                <div class="glass-panel rounded-[2rem] flex-1 overflow-hidden flex flex-col min-h-[500px]">
-                    <div class="overflow-x-auto flex-1 h-full scrollbar-default">
-                        <table class="w-full text-left border-collapse min-w-[700px]">
-                            <thead class="sticky top-0 z-10">
-                                <tr
-                                    class="bg-indigo-50/90 dark:bg-indigo-900/40 backdrop-blur-md text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest border-b border-indigo-100 dark:border-indigo-800/60 shadow-sm">
-                                    <th class="py-4 px-6 font-semibold whitespace-nowrap cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors group"
-                                        @click="sortField = 'date'; sortAsc = !sortAsc">
-                                        Date <i class="ph ml-1 text-sm group-hover:opacity-100 transition-opacity"
-                                            :class="sortField === 'date' ? (sortAsc ? 'ph-caret-up text-indigo-600' : 'ph-caret-down text-indigo-600') : 'ph-caret-up opacity-0'"></i>
-                                    </th>
-                                    <th class="py-4 px-6 font-semibold whitespace-nowrap cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors group"
-                                        @click="sortField = 'merchant'; sortAsc = !sortAsc">
-                                        Description <i
-                                            class="ph ml-1 text-sm group-hover:opacity-100 transition-opacity"
-                                            :class="sortField === 'merchant' ? (sortAsc ? 'ph-caret-up text-indigo-600' : 'ph-caret-down text-indigo-600') : 'ph-caret-up opacity-0'"></i>
-                                    </th>
-                                    <th class="py-4 px-6 font-semibold whitespace-nowrap cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors group"
-                                        @click="sortField = 'category'; sortAsc = !sortAsc">
-                                        Category <i class="ph ml-1 text-sm group-hover:opacity-100 transition-opacity"
-                                            :class="sortField === 'category' ? (sortAsc ? 'ph-caret-up text-indigo-600' : 'ph-caret-down text-indigo-600') : 'ph-caret-up opacity-0'"></i>
-                                    </th>
-                                    <th class="py-4 px-6 font-semibold whitespace-nowrap">Account</th>
-                                    <th class="py-4 px-6 font-semibold whitespace-nowrap cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors text-right group"
-                                        @click="sortField = 'amount'; sortAsc = !sortAsc">
-                                        Amount <i class="ph ml-1 text-sm group-hover:opacity-100 transition-opacity"
-                                            :class="sortField === 'amount' ? (sortAsc ? 'ph-caret-up text-indigo-600' : 'ph-caret-down text-indigo-600') : 'ph-caret-up opacity-0'"></i>
-                                    </th>
-                                    <th class="py-4 px-6 font-semibold text-center whitespace-nowrap">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 w-full relative">
-                                <template x-for="tx in filteredTransactions()" :key="tx.id">
-                                    <tr
-                                        class="hover:bg-indigo-50/30 dark:hover:bg-slate-800/40 transition-colors group">
-                                        <td class="py-4 px-6 text-sm font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap"
-                                            x-text="formatDate(tx.date)"></td>
-                                        <td class="py-4 px-6">
-                                            <div class="flex items-center gap-4">
-                                                <div class="w-11 h-11 rounded-[1rem] flex items-center justify-center border shadow-sm group-hover:scale-105 transition-transform"
-                                                    :class="[tx.iconBg, tx.iconBorder, tx.iconColor]">
-                                                    <i class="ph text-xl" :class="tx.icon"></i>
-                                                </div>
-                                                <div>
-                                                    <p class="text-[15px] font-bold text-slate-800 dark:text-slate-100 tracking-tight"
-                                                        x-text="tx.merchant"></p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <span
-                                                class="px-3.5 py-1.5 bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 rounded-full text-xs font-bold border border-slate-200/50 dark:border-slate-700 w-fit inline-block"
-                                                x-text="tx.category"></span>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <div
-                                                class="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 w-fit px-3 py-1.5 rounded-lg bg-white/50 dark:bg-slate-800/50">
-                                                <i class="ph text-sm" :class="tx.methodIcon"></i>
-                                                <span x-text="tx.method"></span>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 px-6 text-right whitespace-nowrap pr-8">
-                                            <p class="text-[15px] font-black tracking-tight"
-                                                :class="tx.amount > 0 ? 'text-emerald-500' : 'text-slate-800 dark:text-white'"
-                                                x-text="(tx.amount > 0 ? '+' : '') + formatCurrency(Math.abs(tx.amount))">
-                                            </p>
-                                        </td>
-                                        <td class="py-4 px-6 text-center whitespace-nowrap">
-                                            <div class="flex items-center justify-center gap-2">
-                                                <button @click.prevent="openTransactionModal(tx)"
-                                                    class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-                                                    title="Edit Transaction">
-                                                    <i class="ph ph-pencil-simple font-bold text-lg"></i>
-                                                </button>
-                                                <button @click.prevent="deleteTransaction(tx.id)"
-                                                    class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-                                                    title="Delete Transaction">
-                                                    <i class="ph ph-trash font-bold text-lg"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </template>
-
-                                <tr x-show="filteredTransactions().length === 0">
-                                    <td colspan="5"
-                                        class="py-20 text-center text-slate-500 dark:text-slate-400 font-semibold text-sm">
-                                        <div class="flex flex-col items-center justify-center gap-4">
-                                            <div
-                                                class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-300 dark:text-slate-600">
-                                                <i class="ph ph-receipt text-4xl"></i>
-                                            </div>
-                                            <p class="text-base text-slate-600 dark:text-slate-400 tracking-tight">
-                                                No transactions match your search.</p>
-                                            <button @click="searchQuery = ''" x-show="searchQuery !== ''"
-                                                class="px-4 py-2 mt-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 transition-colors font-bold text-xs uppercase tracking-wider">Clear
-                                                Filters</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        </main>
-
-        <!-- ==================== RIGHT PANEL ==================== -->
-        <aside
-            class="glass-panel w-80 lg:w-[22rem] rounded-[2rem] hidden md:flex flex-col p-6 overflow-y-auto scrollbar-hide flex-shrink-0 z-20">
-            <h3 class="text-xl font-bold text-slate-800 mb-6 tracking-tight">Analytics</h3>
-
-            <!-- Doughnut Chart (Categories) -->
-            <div class="bg-white/60 p-5 rounded-[1.5rem] mb-5 shadow-sm border border-white">
-                <div class="flex justify-between items-center mb-4">
-                    <h4 class="text-sm font-bold text-slate-700">Category Spread</h4>
-                    <button
-                        class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition-colors"><i
-                            class="ph ph-dots-three text-xl"></i></button>
-                </div>
-                <div class="relative h-56 flex justify-center items-center">
-                    <canvas id="categoryChart"></canvas>
-                    <!-- Center literal -->
-                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Spent</span>
-                        <span class="text-xl font-black text-slate-800" x-text="formatCurrency(totalExpenses)"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bar Chart (Monthly Timeline) -->
-            <div class="bg-white/60 p-5 rounded-[1.5rem] mb-5 shadow-sm border border-white flex-1 min-h-[220px]">
-                <div class="flex justify-between items-center mb-4">
-                    <h4 class="text-sm font-bold text-slate-700">Monthly Spending</h4>
-                    <select
-                        class="text-xs font-semibold bg-slate-100 rounded-lg px-2 py-1 text-slate-500 outline-none cursor-pointer border border-slate-200">
-                        <option>6 Months</option>
-                        <option>1 Year</option>
-                    </select>
-                </div>
-                <div class="h-44 w-full">
-                    <canvas id="monthlyChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Quick Budgets -->
-            <div class="bg-white/60 p-5 rounded-[1.5rem] shadow-sm border border-white">
-                <div class="flex justify-between items-center mb-4">
-                    <h4 class="text-sm font-bold text-slate-700">Active Budgets</h4>
-                    <a href="#" class="text-xs font-bold text-indigo-600 hover:underline">View All</a>
-                </div>
-                <!-- Budget Item -->
-                <div class="mb-4">
-                    <div class="flex justify-between items-end mb-2">
-                        <div>
-                            <span class="text-sm font-bold text-slate-800 block">Food & Dining</span>
-                            <span class="text-xs font-medium"
-                                :class="getCategorySpend('Food & Dining') >= 600 ? 'text-rose-500' : 'text-slate-400'"
-                                x-text="getCategorySpend('Food & Dining') >= 600 ? 'Exceeded' : Math.round((getCategorySpend('Food & Dining') / 600) * 100) + '% used'"></span>
-                        </div>
-                        <span class="text-xs font-bold text-slate-600"><span
-                                x-text="formatCurrency(getCategorySpend('Food & Dining'))"></span> / <span
-                                class="text-slate-400">$600.00</span></span>
-                    </div>
-                    <div class="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-full rounded-full transition-all duration-500"
-                            :class="getCategorySpend('Food & Dining') >= 600 ? 'bg-gradient-to-r from-rose-400 to-rose-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'"
-                            :style="'width: ' + Math.min((getCategorySpend('Food & Dining') / 600) * 100, 100) + '%'">
-                        </div>
-                    </div>
-                </div>
-                <!-- Budget Item -->
-                <div>
-                    <div class="flex justify-between items-end mb-2">
-                        <div>
-                            <span class="text-sm font-bold text-slate-800 block">Shopping</span>
-                            <span class="text-xs font-medium"
-                                :class="getCategorySpend('Shopping') >= 300 ? 'text-rose-500' : 'text-slate-400'"
-                                x-text="getCategorySpend('Shopping') >= 300 ? 'Exceeded' : Math.round((getCategorySpend('Shopping') / 300) * 100) + '% used'"></span>
-                        </div>
-                        <span class="text-xs font-bold text-slate-600"><span
-                                x-text="formatCurrency(getCategorySpend('Shopping'))"></span> / <span
-                                class="text-slate-400">$300.00</span></span>
-                    </div>
-                    <div class="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                        <div class="h-full rounded-full transition-all duration-500"
-                            :class="getCategorySpend('Shopping') >= 300 ? 'bg-gradient-to-r from-rose-400 to-rose-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'"
-                            :style="'width: ' + Math.min((getCategorySpend('Shopping') / 300) * 100, 100) + '%'"></div>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- ==================== FLOATING ACTION BUTTON ==================== -->
-        <button @click="openTransactionModal()"
-            class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-[1.25rem] shadow-lg shadow-indigo-300 flex items-center justify-center hover:-translate-y-1 hover:shadow-2xl hover:scale-105 transition-all duration-300 z-40 group border border-white/20">
-            <i class="ph ph-plus text-3xl group-hover:rotate-90 transition-transform duration-300"></i>
-        </button>
-
-        <!-- ==================== ADD EXPENSE MODAL ==================== -->
-        <div x-cloak x-show="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <!-- Overlay -->
-            <div x-show="isModalOpen" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 backdrop-blur-none"
-                x-transition:enter-end="opacity-100 backdrop-blur-sm"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 backdrop-blur-sm"
-                x-transition:leave-end="opacity-0 backdrop-blur-none"
-                class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="isModalOpen = false"></div>
-
-            <!-- Modal Content Box -->
-            <div x-show="isModalOpen" x-transition:enter="transition ease-out duration-300 transform"
-                x-transition:enter-start="opacity-0 translate-y-8 scale-95"
-                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                x-transition:leave="transition ease-in duration-200 transform"
-                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                x-transition:leave-end="opacity-0 translate-y-8 scale-95"
-                class="relative bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden border border-white dark:border-slate-700">
-
-                <div
-                    class="px-7 py-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800/80">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                            <i class="ph ph-receipt text-xl"></i>
-                        </div>
-                        <h3 class="text-xl font-black text-slate-800 dark:text-white tracking-tight"
-                            x-text="txForm.id ? 'Edit Transaction' : 'Add Transaction'">
-                        </h3>
-                    </div>
-                    <button type="button" @click="isModalOpen = false"
-                        class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full p-2.5 transition-colors">
-                        <i class="ph ph-x font-bold"></i>
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitForm" class="p-7 space-y-5" action="/add-expense" method="POST">
-
-                    <!-- Transaction Type Toggle -->
-                    <div class="flex p-1 bg-slate-100 dark:bg-slate-900/50 rounded-xl w-full">
-                        <button type="button"
-                            @click="txForm.type = 'expense'; if(txForm.category === 'Income') txForm.category = ''"
-                            :class="txForm.type === 'expense' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
-                            class="flex-1 py-2 text-sm font-bold rounded-lg transition-all duration-200">Expense</button>
-                        <button type="button" @click="txForm.type = 'income'; txForm.category = 'Income'"
-                            :class="txForm.type === 'income' ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
-                            class="flex-1 py-2 text-sm font-bold rounded-lg transition-all duration-200">Income</button>
-                    </div>
-
-                    <!-- Amount -->
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Amount</label>
-                        <div class="relative">
-                            <span
-                                class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">$</span>
-                            <input type="number" step="0.01" name="amount" x-model="txForm.amount" required
-                                class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] py-3.5 pl-9 pr-4 text-slate-800 dark:text-slate-100 font-black text-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-slate-300 placeholder:font-medium"
-                                placeholder="0.00">
-                        </div>
-                    </div>
-
-                    <!-- Date & Category -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Date</label>
-                            <input type="date" name="date" x-model="txForm.date" required
-                                class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                        </div>
-                        <div>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Category</label>
-                            <div class="relative">
-                                <select name="category" x-model="txForm.category" required
-                                    class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 dark:text-slate-100 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
-                                    <option value="" disabled>Select...</option>
-                                    <option>Food & Dining</option>
-                                    <option>Transportation</option>
-                                    <option>Housing</option>
-                                    <option>Entertainment</option>
-                                    <option>Healthcare</option>
-                                    <option>Salary</option>
-                                    <option>Income</option>
-                                </select>
-                                <i
-                                    class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Description -->
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Merchant
-                            / Description</label>
-                        <div class="relative">
-                            <i
-                                class="ph ph-storefront absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                            <input type="text" name="description" x-model="txForm.description"
-                                @input.debounce.800ms="autoCategorize" required
-                                class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] py-3.5 pl-11 pr-4 text-sm text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:font-medium"
-                                placeholder="E.g., Whole Foods, Amazon...">
-                        </div>
-                    </div>
-
-                    <!-- Method & Tags -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Payment
-                                Method</label>
-                            <div class="relative">
-                                <select name="method" x-model="txForm.method"
-                                    class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 dark:text-slate-100 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
-                                    <template x-for="acc in myAccounts" :key="acc.name">
-                                        <option :value="acc.name" x-text="acc.name"></option>
-                                    </template>
-                                </select>
-                                <i
-                                    class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tags
-                                (Comma Sep)</label>
-                            <input type="text" name="tags" x-model="txForm.tags"
-                                class="w-full bg-slate-50/50 border border-slate-200 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:font-medium"
-                                placeholder="business, travel...">
-                        </div>
-                    </div>
-
-                    <div class="mt-8 pt-5 border-t border-slate-100 dark:border-slate-700/50 flex justify-end gap-3">
-                        <button type="button" @click="isModalOpen = false"
-                            class="px-5 py-3 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">Cancel</button>
-                        <button type="submit"
-                            class="px-7 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all w-40 flex justify-center items-center">
-                            <span x-show="!isSubmitting">Save Entry</span>
-                            <i x-show="isSubmitting" class="ph ph-spinner animate-spin text-xl" x-cloak></i>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <!-- ==================== ACCOUNT TEMPLATE MODAL ==================== -->
-        <div x-cloak x-show="isAccountModalOpen" class="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div x-show="isAccountModalOpen" x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 backdrop-blur-none"
-                x-transition:enter-end="opacity-100 backdrop-blur-sm"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 backdrop-blur-sm"
-                x-transition:leave-end="opacity-0 backdrop-blur-none"
-                class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="isAccountModalOpen = false"></div>
-
-            <div x-show="isAccountModalOpen" x-transition:enter="transition ease-out duration-300 transform"
-                x-transition:enter-start="opacity-0 translate-y-8 scale-95"
-                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                x-transition:leave="transition ease-in duration-200 transform"
-                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                x-transition:leave-end="opacity-0 translate-y-8 scale-95"
-                class="relative bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-white dark:border-slate-700">
-
-                <div
-                    class="px-7 py-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800/80">
-                    <h3 class="text-xl font-black text-slate-800 dark:text-white tracking-tight"
-                        x-text="accForm.index >= 0 ? 'Edit Account' : 'Add New Account'"></h3>
-                    <button type="button" @click="isAccountModalOpen = false"
-                        class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full p-2.5 transition-colors">
-                        <i class="ph ph-x font-bold"></i>
-                    </button>
-                </div>
-                <form @submit.prevent="saveAccount" class="p-7 space-y-5">
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Account
-                            Name</label>
-                        <input type="text" x-model="accForm.name" required
-                            class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] py-3.5 px-4 text-sm text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:font-medium"
-                            placeholder="E.g., Chase Sapphire">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Type</label>
-                            <div class="relative">
-                                <select x-model="accForm.type" required
-                                    class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 dark:text-slate-100 font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
-                                    <option>Checking</option>
-                                    <option>Savings</option>
-                                    <option>Credit Card</option>
-                                    <option>Cash</option>
-                                </select>
-                                <i
-                                    class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Balance</label>
-                            <input type="number" step="0.01" x-model="accForm.balance" required
-                                class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] px-4 py-3.5 text-sm text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:font-medium"
-                                placeholder="0.00">
-                        </div>
-                    </div>
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Mask
-                            / Ref (Optional)</label>
-                        <input type="text" x-model="accForm.mask"
-                            class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-[1rem] py-3.5 px-4 text-sm text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:font-medium"
-                            placeholder="**** 1234">
-                    </div>
-                    <div class="mt-8 pt-5 border-t border-slate-100 dark:border-slate-700/50 flex justify-end gap-3">
-                        <button type="button" @click="isAccountModalOpen = false"
-                            class="px-5 py-3 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">Cancel</button>
-                        <button type="submit"
-                            class="px-7 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex justify-center items-center">
-                            Save Account
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Application Script -->
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('dashboard', () => ({
-                isDark: localStorage.getItem('theme') === 'dark',
-                init() {
-                    if (this.isDark) document.documentElement.classList.add('dark');
-                    this.loadAccounts();
-                    this.loadAllExpenses();
-                },
-                allTransactions: [],
-                allMappedTransactions: [],
-                searchQuery: '',
-                sortField: 'date',
-                sortAsc: false,
-                async loadAllExpenses() {
-                    try {
-                        const res = await fetch('/load-expenses');
-                        const data = await res.json();
-                        this.allTransactions = data;
-
-                        // Sync mapped transactions
-                        const sorted = [...data].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
-                        this.allMappedTransactions = sorted.map(tx => ({
-                            id: tx.id,
-                            merchant: tx.description,
-                            category: tx.category,
-                            date: tx.date || tx.createdAt,
-                            amount: tx.type === 'expense' ? -Math.abs(tx.amount) : Math.abs(tx.amount),
-                            method: tx.account || 'Unknown',
-                            methodIcon: (this.myAccounts.find(a => a.name === tx.account)?.type === 'Credit Card') ? 'ph-credit-card' : (this.myAccounts.find(a => a.name === tx.account)?.type === 'Cash' ? 'ph-wallet' : 'ph-bank'),
-                            tags: [],
-                            icon: tx.type === 'expense' ? 'ph-storefront' : 'ph-briefcase',
-                            iconBg: tx.type === 'expense' ? 'bg-slate-100' : 'bg-emerald-50',
-                            iconBorder: tx.type === 'expense' ? 'border-slate-200' : 'border-emerald-100',
-                            iconColor: tx.type === 'expense' ? 'text-slate-600' : 'text-emerald-600'
-                        }));
-                        this.recentTransactions = this.allMappedTransactions.slice(0, 5);
-
-                        if (window.renderCharts) window.renderCharts(this.allTransactions);
-                    } catch (e) {
-                        console.error('Failed to load expenses', e);
-                    }
-                },
-                async clearAllTransactions() {
-                    if (!confirm("Are you sure you want to clear all transactions? Account balances will be reset to 0.")) return;
-                    try {
-                        const res = await fetch('/clear-transactions', { method: 'DELETE' });
-                        if (res.ok) {
-                            await this.loadAllExpenses();
-                            await this.loadAccounts();
-                        }
-                    } catch (e) { console.error('Failed to clear', e); }
-                },
-                filteredTransactions() {
-                    let results = this.allMappedTransactions;
-                    if (this.searchQuery) {
-                        const sq = this.searchQuery.toLowerCase();
-                        results = results.filter(tx =>
-                            tx.merchant.toLowerCase().includes(sq) ||
-                            tx.category.toLowerCase().includes(sq)
-                        );
+        },
+        async clearAllTransactions() {
+            if (!confirm("Are you sure you want to clear all transactions? Account balances will be reset to 0.")) return;
+            try {
+                const res = await fetch('/clear-transactions', { method: 'DELETE' });
+                if (res.ok) {
+                    await this.loadAllExpenses();
+                    await this.loadAccounts();
+                }
+            } catch (e) { console.error('Failed to clear', e); }
+        },
+        filteredTransactions() {
+            let results = this.allMappedTransactions;
+            if (this.searchQuery) {
+                const sq = this.searchQuery.toLowerCase();
+                results = results.filter(tx =>
+                    tx.merchant.toLowerCase().includes(sq) ||
+                    tx.category.toLowerCase().includes(sq)
+                );
+            }
+
+            results = [...results].sort((a, b) => {
+                let va = a[this.sortField];
+                let vb = b[this.sortField];
+                if (this.sortField === 'date') {
+                    va = new Date(va).getTime();
+                    vb = new Date(vb).getTime();
+                }
+                if (va < vb) return this.sortAsc ? -1 : 1;
+                if (va > vb) return this.sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            return results;
+        },
+        getCategorySpend(category) {
+            const expenses = this.allTransactions.filter(t => t.type === 'expense' && t.category === category);
+            return expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        },
+        highestExpenseCategory() {
+            const expenses = this.allTransactions.filter(t => t.type === 'expense');
+            if (expenses.length === 0) return 'None';
+            const categoryTotals = {};
+            expenses.forEach(t => {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
+            });
+            let maxCat = 'None';
+            let maxAmt = 0;
+            for (const [cat, amt] of Object.entries(categoryTotals)) {
+                if (amt > maxAmt) { maxAmt = amt; maxCat = cat; }
+            }
+            return maxCat;
+        },
+        highestExpenseAmount() {
+            const expenses = this.allTransactions.filter(t => t.type === 'expense');
+            if (expenses.length === 0) return 0;
+            const categoryTotals = {};
+            expenses.forEach(t => {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
+            });
+            return Math.max(...Object.values(categoryTotals)) || 0;
+        },
+        averageDailySpend() {
+            const expenses = this.allTransactions.filter(t => t.type === 'expense');
+            if (expenses.length === 0) return 0;
+            const dates = expenses.map(t => new Date(t.date || t.createdAt).getTime()).filter(x => !isNaN(x));
+            if (dates.length === 0) return this.totalExpenses;
+            const maxDate = Math.max(...dates);
+            const minDate = Math.min(...dates);
+            const days = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
+            return this.totalExpenses / days;
+        },
+        get totalBalance() {
+            return this.myAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+        },
+        get totalIncome() {
+            return this.allTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        },
+        get totalExpenses() {
+            return this.allTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+        },
+        async loadAccounts() {
+            try {
+                const res = await fetch('/load-accounts');
+                const data = await res.json();
+                this.myAccounts = data;
+                if (this.myAccounts.length > 0 && !this.txForm.method) {
+                    this.txForm.method = this.myAccounts[0].name;
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            }
+        },
+        toggleTheme() {
+            this.isDark = !this.isDark;
+            localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
+            if (this.isDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+        },
+        autoCategorize() {
+            const text = this.txForm.description.trim();
+            if (!text) return;
+
+            fetch('/predict-category', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: text })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const categoryStr = data.category ? data.category.toLowerCase() : '';
+                    const mapping = {
+                        'food': 'Food & Dining',
+                        'groceries': 'Food & Dining',
+                        'transport': 'Transportation',
+                        'transportation': 'Transportation',
+                        'entertainment': 'Entertainment',
+                        'income': 'Income',
+                        'salary': 'Salary',
+                        'housing': 'Housing',
+                        'healthcare': 'Healthcare'
+                    };
+
+                    // Assign mapped value, or intelligently capitalize fallback
+                    if (mapping[categoryStr]) {
+                        this.txForm.category = mapping[categoryStr];
+                    } else if (data.category) {
+                        // Capitalize string if it is an unknown ML category (e.g., 'utilities' -> 'Utilities')
+                        this.txForm.category = data.category.charAt(0).toUpperCase() + data.category.slice(1);
                     }
 
-                    results = [...results].sort((a, b) => {
-                        let va = a[this.sortField];
-                        let vb = b[this.sortField];
-                        if (this.sortField === 'date') {
-                            va = new Date(va).getTime();
-                            vb = new Date(vb).getTime();
-                        }
-                        if (va < vb) return this.sortAsc ? -1 : 1;
-                        if (va > vb) return this.sortAsc ? 1 : -1;
-                        return 0;
+                    // Dynamic Type Sync
+                    if (categoryStr === 'income' || categoryStr === 'salary') {
+                        this.txForm.type = 'income';
+                    } else if (data.category && data.category !== '') {
+                        this.txForm.type = 'expense';
+                    }
+                })
+                .catch(err => console.error('Auto category failed:', err));
+        },
+        isModalOpen: false,
+        isSubmitting: false,
+        activeTab: 'Home',
+        isAccountModalOpen: false,
+        accForm: {
+            index: -1,
+            name: '',
+            type: 'Checking',
+            balance: '',
+            mask: ''
+        },
+        openAccountModal(index = -1) {
+            if (index >= 0) {
+                const acc = this.myAccounts[index];
+                this.accForm = { index, name: acc.name, type: acc.type, balance: acc.balance, mask: acc.mask };
+            } else {
+                this.accForm = { index: -1, name: '', type: 'Checking', balance: '', mask: '' };
+            }
+            this.isAccountModalOpen = true;
+        },
+        async saveAccount() {
+            const idx = this.accForm.index;
+            const accountObj = {
+                name: this.accForm.name,
+                type: this.accForm.type,
+                balance: parseFloat(this.accForm.balance) || 0,
+                mask: this.accForm.mask || ''
+            };
+            try {
+                if (idx >= 0) {
+                    const dbId = this.myAccounts[idx].id;
+                    await fetch(`/update-account/${dbId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(accountObj)
                     });
-
-                    return results;
-                },
-                getCategorySpend(category) {
-                    const expenses = this.allTransactions.filter(t => t.type === 'expense' && t.category === category);
-                    return expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-                },
-                highestExpenseCategory() {
-                    const expenses = this.allTransactions.filter(t => t.type === 'expense');
-                    if (expenses.length === 0) return 'None';
-                    const categoryTotals = {};
-                    expenses.forEach(t => {
-                        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
-                    });
-                    let maxCat = 'None';
-                    let maxAmt = 0;
-                    for (const [cat, amt] of Object.entries(categoryTotals)) {
-                        if (amt > maxAmt) { maxAmt = amt; maxCat = cat; }
-                    }
-                    return maxCat;
-                },
-                highestExpenseAmount() {
-                    const expenses = this.allTransactions.filter(t => t.type === 'expense');
-                    if (expenses.length === 0) return 0;
-                    const categoryTotals = {};
-                    expenses.forEach(t => {
-                        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
-                    });
-                    return Math.max(...Object.values(categoryTotals)) || 0;
-                },
-                averageDailySpend() {
-                    const expenses = this.allTransactions.filter(t => t.type === 'expense');
-                    if (expenses.length === 0) return 0;
-                    const dates = expenses.map(t => new Date(t.date || t.createdAt).getTime()).filter(x => !isNaN(x));
-                    if (dates.length === 0) return this.totalExpenses;
-                    const maxDate = Math.max(...dates);
-                    const minDate = Math.min(...dates);
-                    const days = Math.max(1, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)));
-                    return this.totalExpenses / days;
-                },
-                get totalBalance() {
-                    return this.myAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-                },
-                get totalIncome() {
-                    return this.allTransactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-                },
-                get totalExpenses() {
-                    return this.allTransactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-                },
-                async loadAccounts() {
-                    try {
-                        const res = await fetch('/load-accounts');
-                        const data = await res.json();
-                        this.myAccounts = data;
-                        if (this.myAccounts.length > 0 && !this.txForm.method) {
-                            this.txForm.method = this.myAccounts[0].name;
-                        }
-                    } catch (e) {
-                        console.error('Failed to load accounts:', e);
-                    }
-                },
-                toggleTheme() {
-                    this.isDark = !this.isDark;
-                    localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
-                    if (this.isDark) document.documentElement.classList.add('dark');
-                    else document.documentElement.classList.remove('dark');
-                },
-                autoCategorize() {
-                    const text = this.txForm.description.trim();
-                    if (!text) return;
-
-                    fetch('/predict-category', {
+                } else {
+                    await fetch('/save-account', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ description: text })
-                    })
-                        .then(res => res.json())
-                        .then(data => {
-                            const categoryStr = data.category ? data.category.toLowerCase() : '';
-                            const mapping = {
-                                'food': 'Food & Dining',
-                                'groceries': 'Food & Dining',
-                                'transport': 'Transportation',
-                                'transportation': 'Transportation',
-                                'entertainment': 'Entertainment',
-                                'income': 'Income',
-                                'salary': 'Salary',
-                                'housing': 'Housing',
-                                'healthcare': 'Healthcare'
-                            };
-
-                            // Assign mapped value, or intelligently capitalize fallback
-                            if (mapping[categoryStr]) {
-                                this.txForm.category = mapping[categoryStr];
-                            } else if (data.category) {
-                                // Capitalize string if it is an unknown ML category (e.g., 'utilities' -> 'Utilities')
-                                this.txForm.category = data.category.charAt(0).toUpperCase() + data.category.slice(1);
-                            }
-
-                            // Dynamic Type Sync
-                            if (categoryStr === 'income' || categoryStr === 'salary') {
-                                this.txForm.type = 'income';
-                            } else if (data.category && data.category !== '') {
-                                this.txForm.type = 'expense';
-                            }
-                        })
-                        .catch(err => console.error('Auto category failed:', err));
-                },
-                isModalOpen: false,
-                isSubmitting: false,
-                activeTab: 'Home',
-                isAccountModalOpen: false,
-                accForm: {
-                    index: -1,
-                    name: '',
-                    type: 'Checking',
-                    balance: '',
-                    mask: ''
-                },
-                openAccountModal(index = -1) {
-                    if (index >= 0) {
-                        const acc = this.myAccounts[index];
-                        this.accForm = { index, name: acc.name, type: acc.type, balance: acc.balance, mask: acc.mask };
-                    } else {
-                        this.accForm = { index: -1, name: '', type: 'Checking', balance: '', mask: '' };
-                    }
-                    this.isAccountModalOpen = true;
-                },
-                async saveAccount() {
-                    const idx = this.accForm.index;
-                    const accountObj = {
-                        name: this.accForm.name,
-                        type: this.accForm.type,
-                        balance: parseFloat(this.accForm.balance) || 0,
-                        mask: this.accForm.mask || ''
-                    };
-                    try {
-                        if (idx >= 0) {
-                            const dbId = this.myAccounts[idx].id;
-                            await fetch(`/update-account/${dbId}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(accountObj)
-                            });
-                        } else {
-                            await fetch('/save-account', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(accountObj)
-                            });
-                        }
-                        await this.loadAccounts();
-                        this.isAccountModalOpen = false;
-                    } catch (e) {
-                        console.error("Save account failed", e);
-                        alert("Error saving account.");
-                    }
-                },
-                async deleteAccount(index) {
-                    if (confirm('Are you sure you want to delete this account?')) {
-                        try {
-                            const dbId = this.myAccounts[index].id;
-                            await fetch(`/delete-account/${dbId}`, { method: 'DELETE' });
-                            await this.loadAccounts();
-                        } catch (e) {
-                            console.error("Delete account failed", e);
-                            alert("Error deleting account.");
-                        }
-                    }
-                },
-                myAccounts: [],
-                menuItems: [
-                    { name: 'Home', icon: 'ph-house' },
-                    { name: 'Analytics', icon: 'ph-chart-pie-slice' },
-                    { name: 'Transactions', icon: 'ph-receipt' },
-                    { name: 'Account', icon: 'ph-user' },
-                ],
-                txForm: {
+                        body: JSON.stringify(accountObj)
+                    });
+                }
+                await this.loadAccounts();
+                this.isAccountModalOpen = false;
+            } catch (e) {
+                console.error("Save account failed", e);
+                alert("Error saving account.");
+            }
+        },
+        async deleteAccount(index) {
+            if (confirm('Are you sure you want to delete this account?')) {
+                try {
+                    const dbId = this.myAccounts[index].id;
+                    await fetch(`/delete-account/${dbId}`, { method: 'DELETE' });
+                    await this.loadAccounts();
+                } catch (e) {
+                    console.error("Delete account failed", e);
+                    alert("Error deleting account.");
+                }
+            }
+        },
+        myAccounts: [],
+        menuItems: [
+            { name: 'Home', icon: 'ph-house' },
+            { name: 'Analytics', icon: 'ph-chart-pie-slice' },
+            { name: 'Transactions', icon: 'ph-receipt' },
+            { name: 'Account', icon: 'ph-user' },
+        ],
+        txForm: {
+            id: null,
+            type: 'expense',
+            amount: '',
+            date: new Date().toISOString().split('T')[0],
+            category: '',
+            description: '',
+            method: '',
+            tags: ''
+        },
+        openTransactionModal(tx = null) {
+            if (tx) {
+                this.txForm = {
+                    id: tx.id,
+                    type: tx.amount < 0 ? 'expense' : 'income',
+                    amount: Math.abs(tx.amount),
+                    date: tx.date || new Date().toISOString().split('T')[0],
+                    category: tx.category || '',
+                    description: tx.merchant || '',
+                    method: tx.method || '',
+                    tags: ''
+                };
+            } else {
+                this.txForm = {
                     id: null,
                     type: 'expense',
                     amount: '',
                     date: new Date().toISOString().split('T')[0],
                     category: '',
                     description: '',
-                    method: '',
+                    method: this.myAccounts.length ? this.myAccounts[0].name : '',
                     tags: ''
-                },
-                openTransactionModal(tx = null) {
-                    if (tx) {
-                        this.txForm = {
-                            id: tx.id,
-                            type: tx.amount < 0 ? 'expense' : 'income',
-                            amount: Math.abs(tx.amount),
-                            date: tx.date || new Date().toISOString().split('T')[0],
-                            category: tx.category || '',
-                            description: tx.merchant || '',
-                            method: tx.method || '',
-                            tags: ''
-                        };
-                    } else {
-                        this.txForm = {
-                            id: null,
-                            type: 'expense',
-                            amount: '',
-                            date: new Date().toISOString().split('T')[0],
-                            category: '',
-                            description: '',
-                            method: '',
-                            tags: ''
-                        };
-                    }
-                    this.isModalOpen = true;
-                },
-                async deleteTransaction(txId) {
-                    if (confirm('Are you sure you want to delete this transaction?')) {
-                        try {
-                            const response = await fetch(`/delete-expense/${txId}`, { method: 'DELETE' });
-                            if (response.ok) {
-                                await this.loadAccounts();
-                                await this.loadAllExpenses();
-                            }
-                        } catch (e) {
-                            console.error('Delete error', e);
-                            alert("Failed to delete transaction.");
-                        }
-                    }
-                },
-                recentTransactions: [
-                    { id: 1, merchant: 'Netflix Subscription', category: 'Entertainment', date: '2026-09-10', amount: -15.99, method: 'Credit Card', methodIcon: 'ph-credit-card', tags: ['subscription', 'home'], icon: 'ph-monitor-play', iconBg: 'bg-rose-50', iconBorder: 'border-rose-100', iconColor: 'text-rose-600' },
-                    { id: 2, merchant: 'Upwork Payout', category: 'Salary', date: '2026-09-08', amount: 3250.00, method: 'Bank Transfer', methodIcon: 'ph-bank', tags: ['freelance', 'business'], icon: 'ph-briefcase', iconBg: 'bg-emerald-50', iconBorder: 'border-emerald-100', iconColor: 'text-emerald-600' },
-                    { id: 3, merchant: 'Whole Foods Market', category: 'Food & Dining', date: '2026-09-07', amount: -84.20, method: 'Debit Card', methodIcon: 'ph-credit-card', tags: ['groceries'], icon: 'ph-shopping-cart-simple', iconBg: 'bg-amber-50', iconBorder: 'border-amber-100', iconColor: 'text-amber-600' },
-                    { id: 4, merchant: 'Uber Ride', category: 'Transportation', date: '2026-09-06', amount: -24.50, method: 'Credit Card', methodIcon: 'ph-credit-card', tags: ['business', 'travel'], icon: 'ph-car', iconBg: 'bg-blue-50', iconBorder: 'border-blue-100', iconColor: 'text-blue-600' },
-                    { id: 5, merchant: 'Starbucks Coffee', category: 'Food & Dining', date: '2026-09-05', amount: -6.40, method: 'Cash', methodIcon: 'ph-money', tags: ['coffee'], icon: 'ph-coffee', iconBg: 'bg-amber-50', iconBorder: 'border-amber-100', iconColor: 'text-amber-600' },
-                ],
-
-                formatCurrency(val) {
-                    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-                },
-
-                formatDate(dateStr) {
-                    const options = { month: 'short', day: 'numeric', year: 'numeric' };
-                    return new Date(dateStr).toLocaleDateString('en-US', options);
-                },
-
-                getTagColor(tag) {
-                    const tagMap = {
-                        'business': 'bg-blue-100 text-blue-700',
-                        'home': 'bg-purple-100 text-purple-700',
-                        'subscription': 'bg-rose-100 text-rose-700',
-                        'travel': 'bg-sky-100 text-sky-700',
-                        'groceries': 'bg-emerald-100 text-emerald-700',
-                        'coffee': 'bg-amber-100 text-amber-700',
-                        'freelance': 'bg-teal-100 text-teal-700'
-                    };
-                    return tagMap[tag.toLowerCase()] || 'bg-slate-100 text-slate-700';
-                },
-
-                async submitForm(e) {
-                    this.isSubmitting = true;
-
-                    try {
-                        const isExpense = this.txForm.type === 'expense';
-                        const amountVal = parseFloat(this.txForm.amount);
-
-                        // Backend Integration: Persist to SQLite
-                        const payload = {
-                            amount: isExpense ? -amountVal : amountVal,
-                            description: this.txForm.description,
-                            category: this.txForm.category,
-                            type: this.txForm.type,
-                            createdAt: this.txForm.date,
-                            accountName: this.txForm.method
-                        };
-
-                        let requestUrl = '/save-expenses';
-                        let requestMethod = 'POST';
-                        let requestBody = [payload];
-
-                        if (this.txForm.id) {
-                            requestUrl = `/update-expense/${this.txForm.id}`;
-                            requestMethod = 'PUT';
-                            requestBody = payload;
-                        }
-
-                        const response = await fetch(requestUrl, {
-                            method: requestMethod,
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(requestBody)
-                        });
-                        if (!response.ok) throw new Error("Database serialization error on network hop.");
-
-                        // Refresh account balance and total expenses
+                };
+            }
+            this.isModalOpen = true;
+        },
+        async deleteTransaction(txId) {
+            if (confirm('Are you sure you want to delete this transaction?')) {
+                try {
+                    const response = await fetch(`/delete-expense/${txId}`, { method: 'DELETE' });
+                    if (response.ok) {
                         await this.loadAccounts();
                         await this.loadAllExpenses();
-
-                        // Local State UI Update
-                        const newTx = {
-                            id: Date.now(),
-                            merchant: this.txForm.description,
-                            category: this.txForm.category,
-                            date: this.txForm.date,
-                            amount: isExpense ? -amountVal : amountVal,
-                            method: this.txForm.method,
-                            methodIcon: (this.myAccounts.find(a => a.name === this.txForm.method)?.type === 'Credit Card') ? 'ph-credit-card' : (this.myAccounts.find(a => a.name === this.txForm.method)?.type === 'Cash' ? 'ph-wallet' : 'ph-bank'),
-                            tags: this.txForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-                            icon: isExpense ? 'ph-storefront' : 'ph-briefcase',
-                            iconBg: isExpense ? 'bg-slate-100' : 'bg-emerald-50',
-                            iconBorder: isExpense ? 'border-slate-200' : 'border-emerald-100',
-                            iconColor: isExpense ? 'text-slate-600' : 'text-emerald-600'
-                        };
-
-                        this.recentTransactions.unshift(newTx);
-                        if (this.recentTransactions.length > 5) this.recentTransactions.pop();
-
-                        // Reset Form
-                        this.txForm.id = null;
-                        this.txForm.amount = '';
-                        this.txForm.description = '';
-                        this.txForm.tags = '';
-                        this.isModalOpen = false;
-
-                    } catch (error) {
-                        console.error('Submission error:', error);
-                        alert("Error saving transaction.");
-                    } finally {
-                        this.isSubmitting = false;
                     }
+                } catch (e) {
+                    console.error('Delete error', e);
+                    alert("Failed to delete transaction.");
                 }
-            }));
+            }
+        },
+        recentTransactions: [
+            { id: 1, merchant: 'Netflix Subscription', category: 'Entertainment', date: '2026-09-10', amount: -15.99, method: 'Credit Card', methodIcon: 'ph-credit-card', tags: ['subscription', 'home'], icon: 'ph-monitor-play', iconBg: 'bg-rose-50', iconBorder: 'border-rose-100', iconColor: 'text-rose-600' },
+            { id: 2, merchant: 'Upwork Payout', category: 'Salary', date: '2026-09-08', amount: 3250.00, method: 'Bank Transfer', methodIcon: 'ph-bank', tags: ['freelance', 'business'], icon: 'ph-briefcase', iconBg: 'bg-emerald-50', iconBorder: 'border-emerald-100', iconColor: 'text-emerald-600' },
+            { id: 3, merchant: 'Whole Foods Market', category: 'Food & Dining', date: '2026-09-07', amount: -84.20, method: 'Debit Card', methodIcon: 'ph-credit-card', tags: ['groceries'], icon: 'ph-shopping-cart-simple', iconBg: 'bg-amber-50', iconBorder: 'border-amber-100', iconColor: 'text-amber-600' },
+            { id: 4, merchant: 'Uber Ride', category: 'Transportation', date: '2026-09-06', amount: -24.50, method: 'Credit Card', methodIcon: 'ph-credit-card', tags: ['business', 'travel'], icon: 'ph-car', iconBg: 'bg-blue-50', iconBorder: 'border-blue-100', iconColor: 'text-blue-600' },
+            { id: 5, merchant: 'Starbucks Coffee', category: 'Food & Dining', date: '2026-09-05', amount: -6.40, method: 'Cash', methodIcon: 'ph-money', tags: ['coffee'], icon: 'ph-coffee', iconBg: 'bg-amber-50', iconBorder: 'border-amber-100', iconColor: 'text-amber-600' },
+        ],
+
+        formatCurrency(val) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+        },
+
+        formatDate(dateStr) {
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('en-US', options);
+        },
+
+        getTagColor(tag) {
+            const tagMap = {
+                'business': 'bg-blue-100 text-blue-700',
+                'home': 'bg-purple-100 text-purple-700',
+                'subscription': 'bg-rose-100 text-rose-700',
+                'travel': 'bg-sky-100 text-sky-700',
+                'groceries': 'bg-emerald-100 text-emerald-700',
+                'coffee': 'bg-amber-100 text-amber-700',
+                'freelance': 'bg-teal-100 text-teal-700'
+            };
+            return tagMap[tag.toLowerCase()] || 'bg-slate-100 text-slate-700';
+        },
+
+        async submitForm(e) {
+            this.isSubmitting = true;
+
+            try {
+                const isExpense = this.txForm.type === 'expense';
+                const amountVal = parseFloat(this.txForm.amount);
+
+                // Backend Integration: Persist to SQLite
+                const payload = {
+                    amount: isExpense ? -amountVal : amountVal,
+                    description: this.txForm.description,
+                    category: this.txForm.category,
+                    type: this.txForm.type,
+                    createdAt: this.txForm.date,
+                    accountName: this.txForm.method
+                };
+
+                let requestUrl = '/save-expenses';
+                let requestMethod = 'POST';
+                let requestBody = [payload];
+
+                if (this.txForm.id) {
+                    requestUrl = `/update-expense/${this.txForm.id}`;
+                    requestMethod = 'PUT';
+                    requestBody = payload;
+                }
+
+                const response = await fetch(requestUrl, {
+                    method: requestMethod,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                if (!response.ok) throw new Error("Database serialization error on network hop.");
+
+                // Refresh account balance and total expenses
+                await this.loadAccounts();
+                await this.loadAllExpenses();
+
+                // Reset Form
+                this.txForm.id = null;
+                this.txForm.amount = '';
+                this.txForm.description = '';
+                this.txForm.tags = '';
+                this.isModalOpen = false;
+
+            } catch (error) {
+                console.error('Submission error:', error);
+                alert("Error saving transaction.");
+            } finally {
+                this.isSubmitting = false;
+            }
+        }
+    }));
+});
+
+let chartsInstance = {};
+window.renderCharts = function (transactions) {
+    Chart.defaults.font.family = "'Inter', 'system-ui', 'sans-serif'";
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.scale.grid.color = 'rgba(226, 232, 240, 0.6)';
+
+    const initChart = (id, config) => {
+        if (chartsInstance[id]) chartsInstance[id].destroy();
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        chartsInstance[id] = new Chart(canvas.getContext('2d'), config);
+    };
+
+    const expenses = transactions.filter(t => t.type === 'expense');
+    const incomes = transactions.filter(t => t.type === 'income');
+
+    // 1. Categories Aggregation
+    const categorySums = {};
+    expenses.forEach(t => categorySums[t.category] = (categorySums[t.category] || 0) + Math.abs(t.amount));
+    const catLabels = Object.keys(categorySums).length ? Object.keys(categorySums) : ['No Data'];
+    const catData = Object.values(categorySums).length ? Object.values(categorySums) : [1];
+
+    const doughnutConfig = {
+        type: 'doughnut',
+        data: {
+            labels: catLabels,
+            datasets: [{
+                data: catData,
+                backgroundColor: ['#6366f1', '#38bdf8', '#a855f7', '#f43f5e', '#cbd5e1', '#fbbf24', '#10b981'],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '80%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#0f172a', bodyColor: '#334155',
+                    borderColor: '#e2e8f0', borderWidth: 1, padding: 12, boxPadding: 6, usePointStyle: true,
+                    callbacks: { label: (c) => ` ${c.label}: $${c.raw}` }
+                }
+            }
+        }
+    };
+
+    // Render both sidebar and large analytics category charts
+    initChart('categoryChart', doughnutConfig);
+
+    const largeDoughnutConfig = JSON.parse(JSON.stringify(doughnutConfig));
+    largeDoughnutConfig.options.plugins.legend.display = true;
+    largeDoughnutConfig.options.plugins.legend.position = 'right';
+    initChart('largeCategoryChart', largeDoughnutConfig);
+
+    // 2. Monthly Analytics Aggregation
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyData = {};
+    const last6Months = [];
+
+    const d = new Date();
+    for (let i = 5; i >= 0; i--) {
+        let m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+        let key = `${m.getFullYear()}-${m.getMonth()}`;
+        last6Months.push({ key, label: monthNames[m.getMonth()] });
+        monthlyData[key] = { inc: 0, exp: 0 };
+    }
+
+    transactions.forEach(t => {
+        let d2 = new Date(t.date || t.createdAt);
+        let key = `${d2.getFullYear()}-${d2.getMonth()}`;
+        if (monthlyData[key]) {
+            if (t.type === 'income') monthlyData[key].inc += Math.abs(t.amount);
+            else monthlyData[key].exp += Math.abs(t.amount);
+        }
+    });
+
+    const barConfig = {
+        type: 'bar',
+        data: {
+            labels: last6Months.map(m => m.label),
+            datasets: [
+                { label: 'Income', data: last6Months.map(m => monthlyData[m.key].inc), backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.8 },
+                { label: 'Expenses', data: last6Months.map(m => monthlyData[m.key].exp), backgroundColor: '#6366f1', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.8 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 6, padding: 20 } } },
+            scales: {
+                y: { beginAtZero: true, border: { display: false }, ticks: { maxTicksLimit: 5, callback: (v) => '$' + v } },
+                x: { grid: { display: false }, border: { display: false } }
+            }
+        }
+    };
+
+    initChart('monthlyChart', barConfig);
+    initChart('largeCashFlowChart', barConfig);
+
+    // 3. Mini Trend Lines for Summary Cards
+    const commonSparklineOptions = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false, beginAtZero: false } },
+        elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 4 } },
+        interaction: { mode: 'nearest', intersect: false }
+    };
+
+    const generateGradient = (ctx, colorStart, colorEnd) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 60);
+        gradient.addColorStop(0, colorStart);
+        gradient.addColorStop(1, colorEnd);
+        return gradient;
+    };
+
+    const incData = last6Months.map(m => monthlyData[m.key].inc);
+    const ctxInc = document.getElementById('incomeTrendChart');
+    if (ctxInc) {
+        initChart('incomeTrendChart', {
+            type: 'line',
+            data: { labels: ['1', '2', '3', '4', '5', '6'], datasets: [{ data: incData, borderColor: '#059669', borderWidth: 2, tension: 0.4, fill: true, backgroundColor: generateGradient(ctxInc.getContext('2d'), 'rgba(16, 185, 129, 0.25)', 'rgba(16, 185, 129, 0)') }] },
+            options: commonSparklineOptions
         });
+    }
 
-        let chartsInstance = {};
-        window.renderCharts = function (transactions) {
-            Chart.defaults.font.family = "'Inter', 'system-ui', 'sans-serif'";
-            Chart.defaults.color = '#64748b';
-            Chart.defaults.scale.grid.color = 'rgba(226, 232, 240, 0.6)';
-
-            const initChart = (id, config) => {
-                if (chartsInstance[id]) chartsInstance[id].destroy();
-                const canvas = document.getElementById(id);
-                if (!canvas) return;
-                chartsInstance[id] = new Chart(canvas.getContext('2d'), config);
-            };
-
-            const expenses = transactions.filter(t => t.type === 'expense');
-            const incomes = transactions.filter(t => t.type === 'income');
-
-            // 1. Categories Aggregation
-            const categorySums = {};
-            expenses.forEach(t => categorySums[t.category] = (categorySums[t.category] || 0) + Math.abs(t.amount));
-            const catLabels = Object.keys(categorySums).length ? Object.keys(categorySums) : ['No Data'];
-            const catData = Object.values(categorySums).length ? Object.values(categorySums) : [1];
-
-            const doughnutConfig = {
-                type: 'doughnut',
-                data: {
-                    labels: catLabels,
-                    datasets: [{
-                        data: catData,
-                        backgroundColor: ['#6366f1', '#38bdf8', '#a855f7', '#f43f5e', '#cbd5e1', '#fbbf24', '#10b981'],
-                        borderWidth: 0,
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false, cutout: '80%',
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#0f172a', bodyColor: '#334155',
-                            borderColor: '#e2e8f0', borderWidth: 1, padding: 12, boxPadding: 6, usePointStyle: true,
-                            callbacks: { label: (c) => ` ${c.label}: $${c.raw}` }
-                        }
-                    }
-                }
-            };
-
-            // Render both sidebar and large analytics category charts
-            initChart('categoryChart', doughnutConfig);
-
-            const largeDoughnutConfig = JSON.parse(JSON.stringify(doughnutConfig));
-            largeDoughnutConfig.options.plugins.legend.display = true;
-            largeDoughnutConfig.options.plugins.legend.position = 'right';
-            initChart('largeCategoryChart', largeDoughnutConfig);
-
-            // 2. Monthly Analytics Aggregation
-            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            const monthlyData = {};
-            const last6Months = [];
-
-            const d = new Date();
-            for (let i = 5; i >= 0; i--) {
-                let m = new Date(d.getFullYear(), d.getMonth() - i, 1);
-                let key = `${m.getFullYear()}-${m.getMonth()}`;
-                last6Months.push({ key, label: monthNames[m.getMonth()] });
-                monthlyData[key] = { inc: 0, exp: 0 };
-            }
-
-            transactions.forEach(t => {
-                let d2 = new Date(t.date || t.createdAt);
-                let key = `${d2.getFullYear()}-${d2.getMonth()}`;
-                if (monthlyData[key]) {
-                    if (t.type === 'income') monthlyData[key].inc += Math.abs(t.amount);
-                    else monthlyData[key].exp += Math.abs(t.amount);
-                }
-            });
-
-            const barConfig = {
-                type: 'bar',
-                data: {
-                    labels: last6Months.map(m => m.label),
-                    datasets: [
-                        { label: 'Income', data: last6Months.map(m => monthlyData[m.key].inc), backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.8 },
-                        { label: 'Expenses', data: last6Months.map(m => monthlyData[m.key].exp), backgroundColor: '#6366f1', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.8 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 6, padding: 20 } } },
-                    scales: {
-                        y: { beginAtZero: true, border: { display: false }, ticks: { maxTicksLimit: 5, callback: (v) => '$' + v } },
-                        x: { grid: { display: false }, border: { display: false } }
-                    }
-                }
-            };
-
-            initChart('monthlyChart', barConfig);
-            initChart('largeCashFlowChart', barConfig);
-
-            // 3. Mini Trend Lines for Summary Cards
-            const commonSparklineOptions = {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false, beginAtZero: false } },
-                elements: { point: { radius: 0, hitRadius: 10, hoverRadius: 4 } },
-                interaction: { mode: 'nearest', intersect: false }
-            };
-
-            const generateGradient = (ctx, colorStart, colorEnd) => {
-                const gradient = ctx.createLinearGradient(0, 0, 0, 60);
-                gradient.addColorStop(0, colorStart);
-                gradient.addColorStop(1, colorEnd);
-                return gradient;
-            };
-
-            const incData = last6Months.map(m => monthlyData[m.key].inc);
-            const ctxInc = document.getElementById('incomeTrendChart');
-            if (ctxInc) {
-                initChart('incomeTrendChart', {
-                    type: 'line',
-                    data: { labels: ['1', '2', '3', '4', '5', '6'], datasets: [{ data: incData, borderColor: '#059669', borderWidth: 2, tension: 0.4, fill: true, backgroundColor: generateGradient(ctxInc.getContext('2d'), 'rgba(16, 185, 129, 0.25)', 'rgba(16, 185, 129, 0)') }] },
-                    options: commonSparklineOptions
-                });
-            }
-
-            const expData = last6Months.map(m => monthlyData[m.key].exp);
-            const ctxExp = document.getElementById('expenseTrendChart');
-            if (ctxExp) {
-                initChart('expenseTrendChart', {
-                    type: 'line',
-                    data: { labels: ['1', '2', '3', '4', '5', '6'], datasets: [{ data: expData, borderColor: '#e11d48', borderWidth: 2, tension: 0.4, fill: true, backgroundColor: generateGradient(ctxExp.getContext('2d'), 'rgba(244, 63, 94, 0.25)', 'rgba(244, 63, 94, 0)') }] },
-                    options: commonSparklineOptions
-                });
-            }
-        };
+    const expData = last6Months.map(m => monthlyData[m.key].exp);
+    const ctxExp = document.getElementById('expenseTrendChart');
+    if (ctxExp) {
+        initChart('expenseTrendChart', {
+            type: 'line',
+            data: { labels: ['1', '2', '3', '4', '5', '6'], datasets: [{ data: expData, borderColor: '#e11d48', borderWidth: 2, tension: 0.4, fill: true, backgroundColor: generateGradient(ctxExp.getContext('2d'), 'rgba(244, 63, 94, 0.25)', 'rgba(244, 63, 94, 0)') }] },
+            options: commonSparklineOptions
+        });
+    }
+};

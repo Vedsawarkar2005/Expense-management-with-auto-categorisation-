@@ -7,7 +7,7 @@ ml_bp = Blueprint('ml', __name__)
 @ml_bp.route("/predict-category", methods=["POST"])
 def predict_category_api():
     print("PREDICT API HIT")  # Debug log
-    data = request.get_json()
+    data = request.get_json(silent=True, force=True) or {}
     description = data.get("description", "")
     category = predict_category(description)
     return jsonify({
