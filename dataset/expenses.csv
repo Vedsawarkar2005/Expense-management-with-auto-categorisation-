@@ -396,3 +396,214 @@ cash withdrawal atm,others
 miscellaneous expense,others
 random expense,others
 unknown payment,others
+zomato delivery for lunch,food
+swiggy dinner order,food
+mcdonalds meal,food
+kfc chicken,food
+amazon prime subscription,entertainment
+theatre movie tickets,entertainment
+shell petrol pump,transport
+train booking,transport
+reliance fresh groceries,groceries
+dmart household items,groceries
+amazon clothing order,shopping
+myntra dress,shopping
+wifi broadband bill,utilities
+electricity water bills,utilities
+pharmacy medicine bill,medicine
+doctor hospital visit,medicine
+description,category
+dinner with family,food
+dinner with friends at restaurant,food
+late night dinner,food
+team lunch,food
+office lunch,food
+quick breakfast,food
+brunch at cafe,food
+ordered chinese food,food
+ordered biryani,food
+street food snacks,food
+evening snacks,food
+coffee with friends,food
+tea and biscuits,food
+fast food meal,food
+pizza delivery,food
+burger meal,food
+zomato lunch order,food
+swiggy dinner,food
+restaurant outing,food
+fine dining dinner,food
+
+weekly grocery shopping,groceries
+monthly grocery shopping,groceries
+bought fresh vegetables,groceries
+bought fruits,groceries
+milk and bread purchase,groceries
+supermarket grocery bill,groceries
+snacks and chips,groceries
+grocery from local shop,groceries
+dmart grocery shopping,groceries
+big bazaar grocery,groceries
+daily essentials purchase,groceries
+home groceries restock,groceries
+vegetables from market,groceries
+fruit market shopping,groceries
+grocery refill,groceries
+
+uber ride to office,transport
+ola cab ride home,transport
+auto rickshaw fare,transport
+bus ticket purchase,transport
+train journey ticket,transport
+metro card recharge,transport
+flight tickets booking,transport
+petrol refill bike,transport
+fuel refill car,transport
+diesel refill,transport
+cab ride late night,transport
+shared auto ride,transport
+bus pass monthly,transport
+train pass recharge,transport
+travel by taxi,transport
+
+electricity bill payment,utilities
+water bill payment,utilities
+wifi bill,utilities
+broadband recharge,utilities
+mobile recharge prepaid,utilities
+postpaid bill payment,utilities
+gas cylinder refill,utilities
+lpg gas booking,utilities
+internet charges,utilities
+utility bill payment,utilities
+power bill,utilities
+electric meter recharge,utilities
+water charges payment,utilities
+
+doctor appointment,health
+hospital checkup,health
+medical store purchase,health
+bought medicines,health
+pharmacy bill,health
+health checkup test,health
+blood test charges,health
+xray scan,health
+gym membership fee,health
+fitness training fee,health
+yoga class fee,health
+health insurance payment,health
+doctor consultation fee,health
+
+bought tshirt,shopping
+bought jeans online,shopping
+amazon shopping order,shopping
+flipkart electronics purchase,shopping
+shopping mall expense,shopping
+clothes shopping,shopping
+footwear purchase,shopping
+watch purchase,shopping
+accessories shopping,shopping
+online fashion shopping,shopping
+sale purchase clothes,shopping
+new outfit purchase,shopping
+shopping for festival,shopping
+
+school fees payment,education
+college tuition fees,education
+online course purchase,education
+udemy course fee,education
+bought textbooks,education
+exam fees payment,education
+coaching class fees,education
+training program fee,education
+certification course fee,education
+
+monthly rent payment,house
+house rent,house
+flat rent payment,house
+apartment rent,house
+home maintenance cost,house
+repair work at home,house
+plumbing repair,house
+electric repair,house
+furniture purchase,house
+home cleaning service,house
+
+gift for birthday,others
+gift purchase for friend,others
+charity donation,others
+temple donation,others
+random expense,others
+miscellaneous spending,others
+bank charges,others
+late payment fee,others
+service charge,others
+subscription fee,others
+
+coffee,food
+lunch,food
+dinner,food
+snacks,groceries
+milk,groceries
+uber,transport
+petrol,transport
+electricity,utilities
+medicine,health
+shirt,shopping
+book,education
+rent,house
+gift,others
+
+had dinner at cafe,food
+went for lunch outing,food
+ordered snacks online,food
+night food delivery,food
+restaurant bill payment,food
+
+bought groceries for home,groceries
+daily grocery purchase,groceries
+vegetable shopping,groceries
+
+travelled by bus,transport
+took uber ride,transport
+fuel cost,transport
+
+paid electricity charges,utilities
+internet bill paid,utilities
+
+doctor visit fee,health
+medicine cost,health
+
+bought clothes online,shopping
+shopping online sale,shopping
+
+paid college fees,education
+bought study material,education
+
+paid house rent,house
+home repair charges,house
+
+donated money,others
+misc charges,others
+tomato,groceries
+onion,groceries
+potato,groceries
+carrot,groceries
+cabbage,groceries
+capsicum,groceries
+spinach,groceries
+milk,groceries
+bread,groceries
+eggs,groceries
+rice,groceries
+wheat,groceries
+dal,groceries
+sugar,groceries
+salt,groceries
+oil,groceries
+butter,groceries
+cheese,groceries
+bought tomato,groceries
+purchased onions,groceries
+vegetable shopping,groceries
+bought fresh vegetables,groceries

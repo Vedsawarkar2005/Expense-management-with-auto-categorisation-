@@ -307,7 +307,7 @@ document.addEventListener('alpine:init', () => {
         ],
 
         formatCurrency(val) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
         },
 
         formatDate(dateStr) {
@@ -423,7 +423,7 @@ window.renderCharts = function (transactions) {
                 tooltip: {
                     backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#0f172a', bodyColor: '#334155',
                     borderColor: '#e2e8f0', borderWidth: 1, padding: 12, boxPadding: 6, usePointStyle: true,
-                    callbacks: { label: (c) => ` ${c.label}: $${c.raw}` }
+                    callbacks: { label: (c) => ` ${c.label}: ₹${c.raw}` }
                 }
             }
         }
@@ -472,7 +472,7 @@ window.renderCharts = function (transactions) {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 6, padding: 20 } } },
             scales: {
-                y: { beginAtZero: true, border: { display: false }, ticks: { maxTicksLimit: 5, callback: (v) => '$' + v } },
+                y: { beginAtZero: true, border: { display: false }, ticks: { maxTicksLimit: 5, callback: (v) => '₹' + v } },
                 x: { grid: { display: false }, border: { display: false } }
             }
         }
