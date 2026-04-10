@@ -1,0 +1,51 @@
+            <div x-cloak x-show="activeTab === 'Analytics'"
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+                class="flex flex-col gap-6 flex-1 pb-10 w-full overflow-y-auto pr-2 scrollbar-hide">
+
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight mb-2">Analytics Overview
+                </h2>
+
+                <!-- Analytics Top Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
+                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
+                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Highest
+                            Expense</p>
+                        <h3 class="text-2xl font-bold text-slate-800 dark:text-white" x-text="highestExpenseCategory()">
+                        </h3>
+                        <p class="text-[13px] font-semibold text-rose-500 mt-0.5"
+                            x-text="formatCurrency(highestExpenseAmount())"></p>
+                    </div>
+                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
+                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Avg
+                            Daily Spend</p>
+                        <h3 class="text-3xl font-black text-slate-800 dark:text-white"
+                            x-text="formatCurrency(averageDailySpend())"></h3>
+                    </div>
+                    <div class="glass-panel p-6 rounded-[2rem] flex flex-col justify-center">
+                        <p class="text-slate-500 font-medium text-sm mb-1 uppercase tracking-widest text-[10px]">Net
+                            Cash Flow</p>
+                        <h3 class="text-3xl font-black"
+                            :class="totalIncome - totalExpenses >= 0 ? 'text-emerald-500' : 'text-rose-500'"
+                            x-text="formatCurrency(totalIncome - totalExpenses)"></h3>
+                    </div>
+                </div>
+
+                <!-- Large Detail Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                    <div class="glass-panel p-7 rounded-[2rem] flex flex-col min-h-[350px]">
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight mb-4">Cash Flow
+                            Trends</h3>
+                        <div class="flex-1 relative w-full h-[250px]">
+                            <canvas id="largeCashFlowChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-7 rounded-[2rem] flex flex-col min-h-[350px]">
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight mb-4">Expense
+                            Breakdown</h3>
+                        <div class="flex-1 relative w-full h-[250px] flex justify-center">
+                            <canvas id="largeCategoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
